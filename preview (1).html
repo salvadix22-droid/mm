@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World Manager</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:#07110d;color:#f4f7f5}
+button,select,input{font:inherit}
+button{cursor:pointer;border:0;border-radius:10px;padding:11px 16px;background:#c8ff35;color:#07110d;font-weight:800}
+button:disabled{opacity:.45;cursor:not-allowed}
+.app{min-height:100vh;background:radial-gradient(circle at 80% 0,#19351f 0,#07110d 45%)}
+.top{height:64px;border-bottom:1px solid #26372d;display:flex;align-items:center;padding:0 22px;justify-content:space-between;position:sticky;top:0;background:#09130fee;z-index:5;gap:10px}
+.logo{font-size:21px;font-weight:900}.logo span{color:#c8ff35}
+.top-right{display:flex;gap:8px;align-items:center}
+.save{background:#16251c;color:white;border:1px solid #314538}
+.lang-select{background:#16251c;color:#fff;border:1px solid #314538;padding:9px 10px;border-radius:10px}
+.screen{max-width:1180px;margin:auto;padding:30px 22px}
+.hero{min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;text-align:center}
+.hero h1{font-size:clamp(42px,8vw,86px);margin:0 0 16px;letter-spacing:-4px}
+.hero p{color:#aab9af;max-width:650px;font-size:18px;line-height:1.6}
+.big{font-size:18px;padding:16px 28px;margin-top:18px}
+.hidden{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.card{background:#0d1a13;border:1px solid #24372b;border-radius:16px;padding:20px}
+.card:hover{border-color:#c8ff35}
+.card h3{margin:0 0 8px}.muted{color:#91a197}
+.nav{display:flex;gap:7px;overflow:auto;padding:12px 22px;border-bottom:1px solid #26372d;background:#0a1510}
+.nav button{background:transparent;color:#9eafa4;padding:9px 12px;white-space:nowrap}
+.nav button.active{color:#c8ff35;background:#142319}
+.panel{background:#0c1811;border:1px solid #24372b;border-radius:16px;padding:22px;margin-bottom:16px}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.form{display:grid;gap:12px;max-width:600px}
+.form input,.form select{background:#101e16;color:white;border:1px solid #34493b;padding:13px;border-radius:10px}
+.players{width:100%;border-collapse:collapse}
+.players th,.players td{text-align:left;padding:10px;border-bottom:1px solid #223328;font-size:14px}
+.players tr.me{background:#132217}
+.rating{color:#c8ff35;font-weight:900}
+.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#17281d;color:#c5d2ca;font-size:12px}
+.danger{background:#351a1a;color:#ffb0b0}.success{color:#c8ff35}
+.fixture{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #223328}
+.right{text-align:right}
+.toast{position:fixed;right:20px;bottom:20px;background:#c8ff35;color:#07110d;padding:13px 18px;border-radius:10px;font-weight:800;display:none;z-index:20;max-width:320px}
+.pitch-wrap{display:flex;justify-content:center}
+.pitch{position:relative;width:min(760px,100%);height:560px;background:#0d6b2b;border:2px solid #8bcf91;border-radius:4px;overflow:hidden}
+.pitch:before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:#8bcf91;opacity:.8}
+.halfway{position:absolute;left:50%;top:50%;width:120px;height:120px;border:2px solid #8bcf91;border-radius:50%;transform:translate(-50%,-50%)}
+.box{position:absolute;left:50%;width:250px;height:115px;border:2px solid #8bcf91;transform:translateX(-50%)}
+.topbox{top:-2px}.bottombox{bottom:-2px}
+.goal{position:absolute;left:50%;width:100px;height:22px;border:2px solid #8bcf91;transform:translateX(-50%)}
+.topgoal{top:-2px}.bottomgoal{bottom:-2px}
+.pitch-player{position:absolute;transform:translate(-50%,-50%);text-align:center;width:112px;font-size:12px;text-shadow:0 1px 2px #001;cursor:grab;user-select:none;z-index:2;transition:.15s}
+.pitch-player:active{cursor:grabbing}.pitch-player.dragging{opacity:.4}
+.pitch-player .shirt{font-size:26px;line-height:26px;position:relative}
+.pitch-player .shirtnum{position:absolute;top:2px;left:0;right:0;font-size:10px;font-weight:900;color:#07110d}
+.pitch-player b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitch-player span{display:block;color:#d9eadc;font-size:10px}.pitch-player strong{color:#c8ff35}
+.pitch-player.hurt{opacity:.55}
+.bench{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.bench-player{display:flex;align-items:center;gap:12px;background:#101e16;border:1px solid #2a4031;border-radius:12px;padding:12px;cursor:grab}
+.bench-player.dragging{opacity:.4}.bench-num{width:28px;height:28px;border-radius:50%;background:#1b3022;display:grid;place-items:center;color:#c8ff35;font-weight:900;flex:none}
+.squad-help{margin-top:12px;padding:12px;background:#101e16;border:1px solid #2a4031;border-radius:10px;color:#aab9af;font-size:14px}
+.offer{border:1px solid #2b4434;border-radius:12px;padding:15px;margin-top:10px;background:#101e16}
+.offer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bar{height:9px;background:#17281d;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:#c8ff35}
+.bar.conf i.good{background:#c8ff35}.bar i.warn{background:#ffcc4d}.bar i.bad{background:#ff6767}
+.stat{font-size:28px;font-weight:900}.season-banner{padding:18px;border:1px solid #c8ff35;border-radius:14px;background:#132217;margin-bottom:16px}
+.tierbadge{font-size:11px;padding:3px 7px;border-radius:6px;margin-left:6px}
+.tierbig{background:#3a2c0f;color:#ffd76a}.tiermid{background:#182c3a;color:#7fc8ff}
+.hurt-badge{color:#ff8080;font-size:11px}
+.euro-badge{font-size:11px;padding:3px 8px;border-radius:6px;background:#241a3a;color:#c8a6ff}
+.modal-overlay{position:fixed;inset:0;background:#000000cc;display:flex;align-items:center;justify-content:center;z-index:30}
+.modal-box{background:#0d1a13;border:1px solid #34493b;border-radius:16px;padding:24px;max-width:360px;width:90%}
+.modal-box p{margin:0 0 16px;font-size:16px}
+@media(max-width:650px){.screen{padding:22px 14px}.hero h1{letter-spacing:-2px}.top{padding:0 14px}.pitch{height:430px}.pitch-player{width:88px;font-size:10px}.pitch-player .shirt{font-size:21px}.pitch-player span{font-size:9px}}
+.formation-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.formation-controls select{background:#101e16;color:#fff;border:1px solid #34493b;padding:11px;border-radius:10px}
+.transfer-box{background:#101e16;border:1px solid #2a4031;border-radius:12px;padding:14px;margin-top:14px}
+.matchcard{background:#101e16;border:1px solid #2a4031;border-radius:12px;padding:14px;margin-top:10px}
+.scoreline{font-size:26px;font-weight:900;text-align:center;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+ <div class="logo">WORLD<span>MANAGER</span></div>
+ <div class="top-right">
+  <select id="langSelect" class="lang-select" onchange="setLang(this.value)"></select>
+  <button class="save" onclick="saveCareer()" id="saveBtn">💾</button>
+ </div>
+</header>
+<div id="nav" class="nav hidden"></div>
+<main id="app"></main>
+</div>
+<div id="toast" class="toast"></div>
+<div id="modalOverlay" class="modal-overlay hidden"></div>
+
+<script>
+"use strict";
+
+/* ===================== I18N ===================== */
+const LANGS=["es","en","fr","de","it"];
+const LANG_NAMES={es:"🇪🇸 Español",en:"🇬🇧 English",fr:"🇫🇷 Français",de:"🇩🇪 Deutsch",it:"🇮🇹 Italiano"};
+let lang=localStorage.getItem("wmLang")||"es";
+
+const I18N={
+en:{
+ nav:{home:"🏠 Home",squad:"👥 Squad",market:"🔄 Market",calendar:"📅 Calendar",table:"🏆 Standings",europe:"🌍 Europe",offers:"📨 Offers",news:"📰 News",jobs:"💼 Jobs",season:"🏁 Season",saves:"💾 My Careers"},
+ hero:{t1:"MAKE THE",t2:"WORLD YOURS",sub:"Build your career as a manager across a full real league season and Europe. Sign players in a realistic market, manage injuries, set your lineup, and simulate matches with real scorers and a live table.",start:"START CAREER →",saves:"💾 MY CAREERS"},
+ newCareer:{title:"Create your manager",managerPh:"Manager name",create:"CREATE CAREER →"},
+ dash:{league:"League",coach:"Coach",season:"Season",budget:"Transfer budget",wage:"Wage budget",played:"Matches played",points:"Points",avg:"Squad average",confidence:"Board confidence",confExcellent:"Excellent",confGood:"Good",confPressure:"Under pressure",confCrisis:"Crisis",news:"📰 Latest news",viewAll:"VIEW ALL",next:"Next match",done:"Calendar completed.",matchday:"Matchday",simulate:"▶️ SIMULATE NEXT MATCH",endSeason:"🏁 END SEASON",ended:"Season finished.",endedSub:"Check the results below and start a new season."},
+ squad:{title:"Squad",formation:"Formation",players:"players",help:"🖱️ Drag a substitute onto the starter you want to replace, swap two starters, or drag a starter to the bench. Injured players can't start.",bench:"Bench",all:"All players",player:"Player",age:"Age",pos:"Pos.",rating:"Rat.",value:"Value",wage:"Wage/yr",status:"Status",starter:"STARTER",sub:"SUB",sell:"LIST FOR SALE",swapHint:"Positions swapped",toBench:"is now on the bench",isStarter:"is now a starter",injured:"Injured",outFor:"out for {n} matches"},
+ market:{title:"🔄 Transfer Market",budget:"Transfer budget",wageUsed:"Wage budget used",note:"Prices reflect age, rating and market interest.",searchTitle:"🔎 Search players",searchPh:"Player name",allPos:"All positions",maxPh:"Max value €M",activeNeg:"🤝 Active negotiations",noActiveNeg:"No active negotiations. Search a player below and press \"Negotiate\".",incoming:"📨 Incoming offers",noIncoming:"No pending offers for your players.",mySales:"📤 My listed players",noSales:"No players listed for sale. List one from the Squad tab.",listening:"Listening to offers",available:"🛒 Available players",noMatches:"No players match your search.",negotiate:"🤝 NEGOTIATE",round:"Round",askingPrice:"Asking price",yearly:"€{v}M/year",interest:"clubs interested"},
+ neg:{summary:"Round {round}/3 · Transfer fee: €{fee}M · Salary: €{salary}M/year.",info:"Negotiation {round}/3. Improve the offer if the club asks for more, or walk away.",feePh:"Transfer fee (€M)",salaryPh:"Annual salary (€M)",send:"📨 SEND OFFER",cancel:"CANCEL"},
+ offersPage:{title:"Offers",forSale:"📤 Players for sale",asking:"Asking price",remove:"REMOVE FROM SALE",incomingT:"📨 Offers from other clubs",wants:"want",accept:"✅ ACCEPT",reject:"❌ REJECT",noSales:"You have no players for sale.",noIncoming:"No pending offers."},
+ calendar:{title:"Calendar",season:"Season",matchday:"Matchday",upcoming:"upcoming"},
+ table:{title:"Standings",pos:"#",club:"Club",p:"P",pts:"PTS",w:"W",d:"D",l:"L",gd:"GD"},
+ season:{title:"🏁 Season summary",completeAll:"Complete all matches to receive prizes and progress.",remaining:"Matches remaining",finished:"finished",wins:"Wins",draws:"Draws",losses:"Losses",avg:"Squad average",evolution:"📈 Career evolution",startNext:"🔄 START {season}"},
+ news:{title:"📰 News",sub:"The football world follows your career minute by minute.",count:"news items",empty:"No news yet",emptySub:"Play matches, negotiate transfers or finish a season to generate news."},
+ jobs:{title:"💼 Job offers",sub:"Good results attract other clubs. Accept an offer to switch club and continue the same career.",empty:"No job offers right now",emptySub:"Finish a season with good results and offers may arrive.",budget:"Budget",target:"Target",accept:"✅ ACCEPT",reject:"❌ REJECT"},
+ saves:{title:"My careers",backHome:"🏠 Home",empty:"No saved careers",emptySub:"Create your first career and press Save.",create:"CREATE CAREER",cont:"CONTINUE",del:"DELETE",confirmDel:"Delete this career? This can't be undone."},
+ europe:{title:"🌍 Europe",competition:"Competition",group:"Group stage",knockout:"Knockout stage",r16:"Round of 16",qf:"Quarter-final",sf:"Semi-final",final:"Final",champion:"🏆 Champions of Europe!",eliminated:"Eliminated",notQualified:"Not competing in Europe this season.",leg1:"1st leg",leg2:"2nd leg",aggregate:"Aggregate",advanced:"advance to the next round!",outMsg:"eliminated from Europe.",groupTable:"Group table",historyT:"European campaign"},
+ common:{yes:"Yes",no:"No"},
+ match:{title:"📋 Match report",scorers:"Scorers",noGoals:"No goals from your side."},
+ toast:{needName:"Please enter a manager name",created:"Career created!",noBudget:"Not enough transfer budget",noWage:"This deal would exceed your wage budget",hijacked:"{club} have hijacked the deal for {name}!",dealDone:"Deal completed!",roundUp:"The club wants a better offer. New round opened.",broken:"Negotiation broken off after 3 rounds",alreadyListed:"That player is already listed",listed:"{name} is on the market",cantSellStarter:"You can't sell a starter — bench him first",saleAccepted:"Sale accepted. Funds added to your budget.",offerRejected:"Offer rejected",formationChanged:"Formation changed to {f}",needCalendar:"Complete the full calendar first",jobAccepted:"New job accepted!",jobRejected:"Offer rejected",loaded:"Career loaded",notFound:"Career not found",saved:"Career saved",noActive:"No active career",simulated:"Match simulated",newSeason:"New season started!",dropOnStarter:"Drop the player onto a starter to substitute",injury:"{name} is injured — out for {n} matches",autoSub:"{name2} comes on for the injured {name}",blockedInjured:"That player is injured and can't play"}
+},
+es:{
+ nav:{home:"🏠 Inicio",squad:"👥 Plantilla",market:"🔄 Mercado",calendar:"📅 Calendario",table:"🏆 Clasificación",europe:"🌍 Europa",offers:"📨 Ofertas",news:"📰 Noticias",jobs:"💼 Trabajos",season:"🏁 Temporada",saves:"💾 Mis carreras"},
+ hero:{t1:"MAKE THE",t2:"WORLD YOURS",sub:"Construye tu carrera como entrenador con una temporada de liga completa y de verdad, y competición europea. Ficha jugadores en un mercado realista, gestiona lesiones, prepara tu once, y simula partidos con goleadores reales y una clasificación en vivo.",start:"START CAREER →",saves:"💾 MIS CARRERAS"},
+ newCareer:{title:"Crear entrenador",managerPh:"Nombre del entrenador",create:"CREAR CARRERA →"},
+ dash:{league:"Liga",coach:"Entrenador",season:"Temporada",budget:"Presupuesto de fichajes",wage:"Presupuesto salarial",played:"Partidos jugados",points:"Puntos",avg:"Media plantilla",confidence:"Confianza de la directiva",confExcellent:"Excelente",confGood:"Buena",confPressure:"Bajo presión",confCrisis:"Crisis",news:"📰 Últimas noticias",viewAll:"VER TODAS",next:"Próximo partido",done:"Calendario completado.",matchday:"Jornada",simulate:"▶️ SIMULAR PRÓXIMO PARTIDO",endSeason:"🏁 TERMINAR TEMPORADA",ended:"Temporada terminada.",endedSub:"Revisa los resultados y comienza una nueva temporada."},
+ squad:{title:"Plantilla",formation:"Formación",players:"jugadores",help:"🖱️ Arrastra un suplente al titular que quieras sustituir, intercambia dos titulares o arrastra un titular al banquillo. Los lesionados no pueden ser titulares.",bench:"Banquillo",all:"Todos los jugadores",player:"Jugador",age:"Edad",pos:"Pos.",rating:"Media",value:"Valor",wage:"Sueldo/año",status:"Estado",starter:"TITULAR",sub:"SUPLENTE",sell:"PONER A LA VENTA",swapHint:"Posiciones intercambiadas",toBench:"va al banquillo",isStarter:"es titular",injured:"Lesionado",outFor:"baja {n} partidos"},
+ market:{title:"🔄 Mercado de fichajes",budget:"Presupuesto de fichajes",wageUsed:"Presupuesto salarial usado",note:"Los precios reflejan edad, media y el interés del mercado.",searchTitle:"🔎 Buscar jugadores",searchPh:"Nombre del jugador",allPos:"Todas las posiciones",maxPh:"Valor máximo €M",activeNeg:"🤝 Negociaciones activas",noActiveNeg:"No tienes negociaciones activas. Busca un jugador y pulsa “Negociar”.",incoming:"📨 Ofertas recibidas",noIncoming:"No hay ofertas pendientes por tus jugadores.",mySales:"📤 Mis jugadores en venta",noSales:"No tienes jugadores en venta. Hazlo desde Plantilla.",listening:"Escuchando ofertas",available:"🛒 Jugadores disponibles",noMatches:"No hay jugadores que coincidan con la búsqueda.",negotiate:"🤝 NEGOCIAR",round:"Ronda",askingPrice:"Precio pedido",yearly:"€{v}M/año",interest:"clubes interesados"},
+ neg:{summary:"Ronda {round}/3 · Traspaso: €{fee}M · Sueldo: €{salary}M/año.",info:"Negociación {round}/3. Mejora la oferta si el club pide más, o retírate.",feePh:"Oferta de traspaso (€M)",salaryPh:"Sueldo anual (€M)",send:"📨 ENVIAR OFERTA",cancel:"CANCELAR"},
+ offersPage:{title:"Ofertas",forSale:"📤 Jugadores en venta",asking:"Precio pedido",remove:"RETIRAR DE LA VENTA",incomingT:"📨 Ofertas de otros clubes",wants:"quiere",accept:"✅ ACEPTAR",reject:"❌ RECHAZAR",noSales:"No tienes jugadores en venta.",noIncoming:"No hay ofertas pendientes."},
+ calendar:{title:"Calendario",season:"Temporada",matchday:"Jornada",upcoming:"próximo"},
+ table:{title:"Clasificación",pos:"#",club:"Club",p:"PJ",pts:"PTS",w:"G",d:"E",l:"P",gd:"DG"},
+ season:{title:"🏁 Resumen de temporada",completeAll:"Completa todos los partidos para recibir premios y avanzar.",remaining:"Partidos restantes",finished:"terminada",wins:"Victorias",draws:"Empates",losses:"Derrotas",avg:"Media plantilla",evolution:"📈 Evolución de la carrera",startNext:"🔄 COMENZAR {season}"},
+ news:{title:"📰 Noticias",sub:"El mundo del fútbol sigue tu carrera minuto a minuto.",count:"noticias",empty:"No hay noticias todavía",emptySub:"Juega partidos, negocia fichajes o termina una temporada para generar noticias."},
+ jobs:{title:"💼 Ofertas de trabajo",sub:"Los buenos resultados atraen a otros clubes. Acepta una oferta para cambiar de club y continuar la misma carrera.",empty:"No tienes ofertas de trabajo",emptySub:"Termina una temporada con buenos resultados y pueden llegar ofertas.",budget:"Presupuesto",target:"Objetivo",accept:"✅ ACEPTAR",reject:"❌ RECHAZAR"},
+ saves:{title:"Mis carreras",backHome:"🏠 Inicio",empty:"No tienes carreras guardadas",emptySub:"Crea tu primera carrera y pulsa Guardar.",create:"CREAR CARRERA",cont:"CONTINUAR",del:"BORRAR",confirmDel:"¿Borrar esta carrera? No se puede deshacer."},
+ europe:{title:"🌍 Europa",competition:"Competición",group:"Fase liga",knockout:"Eliminatorias",r16:"Octavos de final",qf:"Cuartos de final",sf:"Semifinal",final:"Final",champion:"🏆 ¡Campeones de Europa!",eliminated:"Eliminado",notQualified:"No juegas competición europea esta temporada.",leg1:"Ida",leg2:"Vuelta",aggregate:"Global",advanced:"¡pasáis a la siguiente ronda!",outMsg:"eliminados de Europa.",groupTable:"Tabla del grupo",historyT:"Trayectoria europea"},
+ common:{yes:"Sí",no:"No"},
+ match:{title:"📋 Informe del partido",scorers:"Goleadores",noGoals:"Tu equipo no marcó."},
+ toast:{needName:"Escribe el nombre del entrenador",created:"¡Carrera creada!",noBudget:"No tienes suficiente presupuesto de fichajes",noWage:"Este fichaje superaría tu presupuesto salarial",hijacked:"¡El {club} se ha adelantado y ficha a {name}!",dealDone:"¡Fichaje completado!",roundUp:"El club pide mejorar la oferta. Nueva ronda abierta.",broken:"Negociación rota tras 3 rondas",alreadyListed:"Ese jugador ya está a la venta",listed:"{name} está en el mercado",cantSellStarter:"No puedes vender a un titular: mándalo al banquillo primero",saleAccepted:"Venta aceptada. El dinero vuelve al presupuesto.",offerRejected:"Oferta rechazada",formationChanged:"Formación cambiada a {f}",needCalendar:"Debes completar todo el calendario antes",jobAccepted:"¡Nuevo trabajo aceptado!",jobRejected:"Oferta rechazada",loaded:"Carrera cargada",notFound:"No se encontró la carrera",saved:"Carrera guardada",noActive:"No hay una carrera activa",simulated:"Partido simulado",newSeason:"¡Nueva temporada!",dropOnStarter:"Suelta el jugador sobre un titular para sustituirlo",injury:"{name} se ha lesionado: baja {n} partidos",autoSub:"{name2} entra por el lesionado {name}",blockedInjured:"Ese jugador está lesionado y no puede jugar"}
+},
+fr:{
+ nav:{home:"🏠 Accueil",squad:"👥 Effectif",market:"🔄 Marché",calendar:"📅 Calendrier",table:"🏆 Classement",europe:"🌍 Europe",offers:"📨 Offres",news:"📰 Actualités",jobs:"💼 Postes",season:"🏁 Saison",saves:"💾 Mes carrières"},
+ hero:{t1:"MAKE THE",t2:"WORLD YOURS",sub:"Construisez votre carrière d'entraîneur sur une vraie saison complète, avec compétition européenne. Recrutez sur un marché réaliste, gérez les blessures, composez votre onze, et simulez les matchs avec de vrais buteurs et un classement en direct.",start:"START CAREER →",saves:"💾 MES CARRIÈRES"},
+ newCareer:{title:"Créer votre entraîneur",managerPh:"Nom de l'entraîneur",create:"CRÉER LA CARRIÈRE →"},
+ dash:{league:"Championnat",coach:"Entraîneur",season:"Saison",budget:"Budget transferts",wage:"Budget salarial",played:"Matchs joués",points:"Points",avg:"Moyenne de l'effectif",confidence:"Confiance du board",confExcellent:"Excellente",confGood:"Bonne",confPressure:"Sous pression",confCrisis:"Crise",news:"📰 Dernières actualités",viewAll:"TOUT VOIR",next:"Prochain match",done:"Calendrier terminé.",matchday:"Journée",simulate:"▶️ SIMULER LE PROCHAIN MATCH",endSeason:"🏁 TERMINER LA SAISON",ended:"Saison terminée.",endedSub:"Consultez les résultats et démarrez une nouvelle saison."},
+ squad:{title:"Effectif",formation:"Formation",players:"joueurs",help:"🖱️ Glissez un remplaçant sur le titulaire à remplacer, échangez deux titulaires, ou envoyez un titulaire sur le banc. Les blessés ne peuvent pas être titulaires.",bench:"Banc",all:"Tous les joueurs",player:"Joueur",age:"Âge",pos:"Poste",rating:"Note",value:"Valeur",wage:"Salaire/an",status:"Statut",starter:"TITULAIRE",sub:"REMPLAÇANT",sell:"METTRE EN VENTE",swapHint:"Postes échangés",toBench:"est envoyé sur le banc",isStarter:"est titulaire",injured:"Blessé",outFor:"absent {n} matchs"},
+ market:{title:"🔄 Marché des transferts",budget:"Budget transferts",wageUsed:"Budget salarial utilisé",note:"Les prix reflètent l'âge, la note et l'intérêt du marché.",searchTitle:"🔎 Rechercher un joueur",searchPh:"Nom du joueur",allPos:"Tous les postes",maxPh:"Valeur max €M",activeNeg:"🤝 Négociations en cours",noActiveNeg:"Aucune négociation en cours. Cherchez un joueur et cliquez sur « Négocier ».",incoming:"📨 Offres reçues",noIncoming:"Aucune offre en attente pour vos joueurs.",mySales:"📤 Joueurs en vente",noSales:"Aucun joueur en vente. Faites-le depuis l'onglet Effectif.",listening:"À l'écoute d'offres",available:"🛒 Joueurs disponibles",noMatches:"Aucun joueur ne correspond à la recherche.",negotiate:"🤝 NÉGOCIER",round:"Tour",askingPrice:"Prix demandé",yearly:"€{v}M/an",interest:"clubs intéressés"},
+ neg:{summary:"Tour {round}/3 · Transfert : €{fee}M · Salaire : €{salary}M/an.",info:"Négociation {round}/3. Améliorez l'offre si le club en demande plus, ou abandonnez.",feePh:"Offre de transfert (€M)",salaryPh:"Salaire annuel (€M)",send:"📨 ENVOYER L'OFFRE",cancel:"ANNULER"},
+ offersPage:{title:"Offres",forSale:"📤 Joueurs en vente",asking:"Prix demandé",remove:"RETIRER DE LA VENTE",incomingT:"📨 Offres d'autres clubs",wants:"veut",accept:"✅ ACCEPTER",reject:"❌ REFUSER",noSales:"Vous n'avez aucun joueur en vente.",noIncoming:"Aucune offre en attente."},
+ calendar:{title:"Calendrier",season:"Saison",matchday:"Journée",upcoming:"à venir"},
+ table:{title:"Classement",pos:"#",club:"Club",p:"J",pts:"PTS",w:"G",d:"N",l:"P",gd:"DB"},
+ season:{title:"🏁 Bilan de la saison",completeAll:"Terminez tous les matchs pour recevoir les primes et avancer.",remaining:"Matchs restants",finished:"terminée",wins:"Victoires",draws:"Nuls",losses:"Défaites",avg:"Moyenne de l'effectif",evolution:"📈 Évolution de la carrière",startNext:"🔄 DÉMARRER {season}"},
+ news:{title:"📰 Actualités",sub:"Le monde du football suit votre carrière minute par minute.",count:"actualités",empty:"Pas encore d'actualités",emptySub:"Jouez des matchs, négociez des transferts ou terminez une saison pour générer des actualités."},
+ jobs:{title:"💼 Offres de poste",sub:"De bons résultats attirent d'autres clubs. Acceptez une offre pour changer de club et continuer la même carrière.",empty:"Aucune offre de poste pour l'instant",emptySub:"Terminez une saison avec de bons résultats et des offres peuvent arriver.",budget:"Budget",target:"Objectif",accept:"✅ ACCEPTER",reject:"❌ REFUSER"},
+ saves:{title:"Mes carrières",backHome:"🏠 Accueil",empty:"Aucune carrière sauvegardée",emptySub:"Créez votre première carrière et cliquez sur Sauvegarder.",create:"CRÉER UNE CARRIÈRE",cont:"CONTINUER",del:"SUPPRIMER",confirmDel:"Supprimer cette carrière ? Action irréversible."},
+ europe:{title:"🌍 Europe",competition:"Compétition",group:"Phase de groupes",knockout:"Phase à élimination",r16:"Huitièmes",qf:"Quart de finale",sf:"Demi-finale",final:"Finale",champion:"🏆 Champions d'Europe !",eliminated:"Éliminé",notQualified:"Pas de compétition européenne cette saison.",leg1:"Aller",leg2:"Retour",aggregate:"Cumulé",advanced:"passez au tour suivant !",outMsg:"éliminés d'Europe.",groupTable:"Classement du groupe",historyT:"Parcours européen"},
+ common:{yes:"Oui",no:"Non"},
+ match:{title:"📋 Rapport du match",scorers:"Buteurs",noGoals:"Aucun but de votre équipe."},
+ toast:{needName:"Entrez le nom de l'entraîneur",created:"Carrière créée !",noBudget:"Budget transferts insuffisant",noWage:"Ce transfert dépasserait votre budget salarial",hijacked:"{club} a doublé votre offre pour {name} !",dealDone:"Transfert conclu !",roundUp:"Le club demande une meilleure offre. Nouveau tour.",broken:"Négociation rompue après 3 tours",alreadyListed:"Ce joueur est déjà en vente",listed:"{name} est sur le marché",cantSellStarter:"Impossible de vendre un titulaire : mettez-le sur le banc d'abord",saleAccepted:"Vente acceptée. Les fonds sont ajoutés à votre budget.",offerRejected:"Offre refusée",formationChanged:"Formation changée en {f}",needCalendar:"Terminez d'abord tout le calendrier",jobAccepted:"Nouveau poste accepté !",jobRejected:"Offre refusée",loaded:"Carrière chargée",notFound:"Carrière introuvable",saved:"Carrière sauvegardée",noActive:"Aucune carrière active",simulated:"Match simulé",newSeason:"Nouvelle saison !",dropOnStarter:"Déposez le joueur sur un titulaire pour le remplacer",injury:"{name} est blessé — absent {n} matchs",autoSub:"{name2} entre pour remplacer {name}, blessé",blockedInjured:"Ce joueur est blessé et ne peut pas jouer"}
+},
+de:{
+ nav:{home:"🏠 Start",squad:"👥 Kader",market:"🔄 Transfermarkt",calendar:"📅 Spielplan",table:"🏆 Tabelle",europe:"🌍 Europa",offers:"📨 Angebote",news:"📰 News",jobs:"💼 Jobangebote",season:"🏁 Saison",saves:"💾 Meine Karrieren"},
+ hero:{t1:"MAKE THE",t2:"WORLD YOURS",sub:"Baue deine Trainerkarriere über eine echte, vollständige Ligasaison auf, inklusive Europapokal. Verpflichte Spieler auf einem realistischen Markt, managt Verletzungen, stelle deine Startelf auf und simuliere Spiele mit echten Torschützen und einer Live-Tabelle.",start:"START CAREER →",saves:"💾 MEINE KARRIEREN"},
+ newCareer:{title:"Trainer erstellen",managerPh:"Name des Trainers",create:"KARRIERE STARTEN →"},
+ dash:{league:"Liga",coach:"Trainer",season:"Saison",budget:"Transferbudget",wage:"Gehaltsbudget",played:"Spiele",points:"Punkte",avg:"Kaderdurchschnitt",confidence:"Vertrauen des Vorstands",confExcellent:"Exzellent",confGood:"Gut",confPressure:"Unter Druck",confCrisis:"Krise",news:"📰 Neueste News",viewAll:"ALLE ANZEIGEN",next:"Nächstes Spiel",done:"Spielplan abgeschlossen.",matchday:"Spieltag",simulate:"▶️ NÄCHSTES SPIEL SIMULIEREN",endSeason:"🏁 SAISON BEENDEN",ended:"Saison beendet.",endedSub:"Sieh dir die Ergebnisse an und starte eine neue Saison."},
+ squad:{title:"Kader",formation:"Formation",players:"Spieler",help:"🖱️ Ziehe einen Ersatzspieler auf den Startelf-Spieler, den er ersetzen soll, tausche zwei Stammspieler oder ziehe einen Spieler auf die Bank. Verletzte können nicht starten.",bench:"Bank",all:"Alle Spieler",player:"Spieler",age:"Alter",pos:"Pos.",rating:"Stärke",value:"Wert",wage:"Gehalt/Jahr",status:"Status",starter:"STARTELF",sub:"ERSATZ",sell:"ZUM VERKAUF ANBIETEN",swapHint:"Positionen getauscht",toBench:"wechselt auf die Bank",isStarter:"steht in der Startelf",injured:"Verletzt",outFor:"fehlt {n} Spiele"},
+ market:{title:"🔄 Transfermarkt",budget:"Transferbudget",wageUsed:"Genutztes Gehaltsbudget",note:"Preise richten sich nach Alter, Stärke und Marktinteresse.",searchTitle:"🔎 Spieler suchen",searchPh:"Spielername",allPos:"Alle Positionen",maxPh:"Max. Wert €M",activeNeg:"🤝 Laufende Verhandlungen",noActiveNeg:"Keine laufenden Verhandlungen. Suche einen Spieler und klicke auf „Verhandeln“.",incoming:"📨 Eingehende Angebote",noIncoming:"Keine offenen Angebote für deine Spieler.",mySales:"📤 Meine Verkaufsspieler",noSales:"Keine Spieler zum Verkauf. Nutze dafür den Kader-Tab.",listening:"Hört sich Angebote an",available:"🛒 Verfügbare Spieler",noMatches:"Keine Spieler passen zur Suche.",negotiate:"🤝 VERHANDELN",round:"Runde",askingPrice:"Forderung",yearly:"€{v}M/Jahr",interest:"interessierte Vereine"},
+ neg:{summary:"Runde {round}/3 · Ablöse: €{fee}M · Gehalt: €{salary}M/Jahr.",info:"Verhandlung {round}/3. Verbessere das Angebot, falls der Verein mehr fordert, oder brich ab.",feePh:"Ablöseangebot (€M)",salaryPh:"Jahresgehalt (€M)",send:"📨 ANGEBOT SENDEN",cancel:"ABBRECHEN"},
+ offersPage:{title:"Angebote",forSale:"📤 Spieler zum Verkauf",asking:"Forderung",remove:"AUS DEM VERKAUF NEHMEN",incomingT:"📨 Angebote anderer Vereine",wants:"will",accept:"✅ ANNEHMEN",reject:"❌ ABLEHNEN",noSales:"Du hast keine Spieler im Verkauf.",noIncoming:"Keine offenen Angebote."},
+ calendar:{title:"Spielplan",season:"Saison",matchday:"Spieltag",upcoming:"kommend"},
+ table:{title:"Tabelle",pos:"#",club:"Verein",p:"Sp",pts:"Pkt",w:"S",d:"U",l:"N",gd:"TD"},
+ season:{title:"🏁 Saisonrückblick",completeAll:"Beende alle Spiele, um Prämien zu erhalten und fortzufahren.",remaining:"Verbleibende Spiele",finished:"beendet",wins:"Siege",draws:"Unentschieden",losses:"Niederlagen",avg:"Kaderdurchschnitt",evolution:"📈 Karriereverlauf",startNext:"🔄 {season} STARTEN"},
+ news:{title:"📰 News",sub:"Die Fußballwelt verfolgt deine Karriere minutengenau.",count:"Meldungen",empty:"Noch keine News",emptySub:"Spiele Partien, verhandle Transfers oder beende eine Saison, um News zu erzeugen."},
+ jobs:{title:"💼 Jobangebote",sub:"Gute Ergebnisse wecken das Interesse anderer Vereine. Nimm ein Angebot an, um den Verein zu wechseln und dieselbe Karriere fortzusetzen.",empty:"Momentan keine Jobangebote",emptySub:"Beende eine Saison mit guten Ergebnissen — dann könnten Angebote kommen.",budget:"Budget",target:"Ziel",accept:"✅ ANNEHMEN",reject:"❌ ABLEHNEN"},
+ saves:{title:"Meine Karrieren",backHome:"🏠 Start",empty:"Keine gespeicherten Karrieren",emptySub:"Erstelle deine erste Karriere und klicke auf Speichern.",create:"KARRIERE ERSTELLEN",cont:"FORTSETZEN",del:"LÖSCHEN",confirmDel:"Diese Karriere löschen? Das kann nicht rückgängig gemacht werden."},
+ europe:{title:"🌍 Europa",competition:"Wettbewerb",group:"Gruppenphase",knockout:"K.-o.-Phase",r16:"Achtelfinale",qf:"Viertelfinale",sf:"Halbfinale",final:"Finale",champion:"🏆 Champion von Europa!",eliminated:"Ausgeschieden",notQualified:"Kein internationaler Wettbewerb diese Saison.",leg1:"Hinspiel",leg2:"Rückspiel",aggregate:"Gesamt",advanced:"zieht in die nächste Runde ein!",outMsg:"aus Europa ausgeschieden.",groupTable:"Gruppentabelle",historyT:"Europa-Verlauf"},
+ common:{yes:"Ja",no:"Nein"},
+ match:{title:"📋 Spielbericht",scorers:"Torschützen",noGoals:"Kein Tor deiner Mannschaft."},
+ toast:{needName:"Bitte gib den Namen des Trainers ein",created:"Karriere erstellt!",noBudget:"Nicht genug Transferbudget",noWage:"Dieser Transfer würde dein Gehaltsbudget überschreiten",hijacked:"{club} hat sich {name} geschnappt!",dealDone:"Transfer abgeschlossen!",roundUp:"Der Verein fordert ein besseres Angebot. Neue Runde.",broken:"Verhandlung nach 3 Runden gescheitert",alreadyListed:"Dieser Spieler steht bereits zum Verkauf",listed:"{name} ist auf dem Markt",cantSellStarter:"Ein Stammspieler kann nicht verkauft werden — erst auf die Bank setzen",saleAccepted:"Verkauf akzeptiert. Das Geld wird deinem Budget gutgeschrieben.",offerRejected:"Angebot abgelehnt",formationChanged:"Formation geändert zu {f}",needCalendar:"Beende zuerst den kompletten Spielplan",jobAccepted:"Neuer Job angenommen!",jobRejected:"Angebot abgelehnt",loaded:"Karriere geladen",notFound:"Karriere nicht gefunden",saved:"Karriere gespeichert",noActive:"Keine aktive Karriere",simulated:"Spiel simuliert",newSeason:"Neue Saison gestartet!",dropOnStarter:"Ziehe den Spieler auf einen Stammspieler, um ihn einzuwechseln",injury:"{name} ist verletzt — fehlt {n} Spiele",autoSub:"{name2} kommt für den verletzten {name}",blockedInjured:"Dieser Spieler ist verletzt und kann nicht spielen"}
+},
+it:{
+ nav:{home:"🏠 Home",squad:"👥 Rosa",market:"🔄 Mercato",calendar:"📅 Calendario",table:"🏆 Classifica",europe:"🌍 Europa",offers:"📨 Offerte",news:"📰 Notizie",jobs:"💼 Offerte di lavoro",season:"🏁 Stagione",saves:"💾 Le mie carriere"},
+ hero:{t1:"MAKE THE",t2:"WORLD YOURS",sub:"Costruisci la tua carriera da allenatore in una vera stagione di campionato completa, con competizione europea. Acquista giocatori in un mercato realistico, gestisci gli infortuni, prepara la formazione e simula le partite con veri marcatori e una classifica in diretta.",start:"START CAREER →",saves:"💾 LE MIE CARRIERE"},
+ newCareer:{title:"Crea il tuo allenatore",managerPh:"Nome dell'allenatore",create:"CREA CARRIERA →"},
+ dash:{league:"Campionato",coach:"Allenatore",season:"Stagione",budget:"Budget trasferimenti",wage:"Budget stipendi",played:"Partite giocate",points:"Punti",avg:"Media rosa",confidence:"Fiducia del club",confExcellent:"Eccellente",confGood:"Buona",confPressure:"Sotto pressione",confCrisis:"Crisi",news:"📰 Ultime notizie",viewAll:"VEDI TUTTE",next:"Prossima partita",done:"Calendario completato.",matchday:"Giornata",simulate:"▶️ SIMULA PROSSIMA PARTITA",endSeason:"🏁 TERMINA STAGIONE",ended:"Stagione terminata.",endedSub:"Controlla i risultati e inizia una nuova stagione."},
+ squad:{title:"Rosa",formation:"Modulo",players:"giocatori",help:"🖱️ Trascina una riserva sul titolare da sostituire, scambia due titolari o manda un titolare in panchina. Gli infortunati non possono giocare titolari.",bench:"Panchina",all:"Tutti i giocatori",player:"Giocatore",age:"Età",pos:"Ruolo",rating:"Media",value:"Valore",wage:"Stipendio/anno",status:"Stato",starter:"TITOLARE",sub:"RISERVA",sell:"METTI SUL MERCATO",swapHint:"Posizioni scambiate",toBench:"va in panchina",isStarter:"è titolare",injured:"Infortunato",outFor:"assente {n} partite"},
+ market:{title:"🔄 Mercato trasferimenti",budget:"Budget trasferimenti",wageUsed:"Budget stipendi utilizzato",note:"I prezzi riflettono età, media e interesse di mercato.",searchTitle:"🔎 Cerca giocatori",searchPh:"Nome del giocatore",allPos:"Tutti i ruoli",maxPh:"Valore massimo €M",activeNeg:"🤝 Trattative in corso",noActiveNeg:"Nessuna trattativa in corso. Cerca un giocatore e premi “Tratta”.",incoming:"📨 Offerte ricevute",noIncoming:"Nessuna offerta in sospeso per i tuoi giocatori.",mySales:"📤 Giocatori sul mercato",noSales:"Nessun giocatore in vendita. Fallo dalla scheda Rosa.",listening:"In ascolto di offerte",available:"🛒 Giocatori disponibili",noMatches:"Nessun giocatore corrisponde alla ricerca.",negotiate:"🤝 TRATTA",round:"Round",askingPrice:"Prezzo richiesto",yearly:"€{v}M/anno",interest:"club interessati"},
+ neg:{summary:"Round {round}/3 · Cartellino: €{fee}M · Stipendio: €{salary}M/anno.",info:"Trattativa {round}/3. Migliora l'offerta se il club chiede di più, oppure ritirati.",feePh:"Offerta cartellino (€M)",salaryPh:"Stipendio annuo (€M)",send:"📨 INVIA OFFERTA",cancel:"ANNULLA"},
+ offersPage:{title:"Offerte",forSale:"📤 Giocatori in vendita",asking:"Prezzo richiesto",remove:"RITIRA DAL MERCATO",incomingT:"📨 Offerte da altri club",wants:"vuole",accept:"✅ ACCETTA",reject:"❌ RIFIUTA",noSales:"Non hai giocatori in vendita.",noIncoming:"Nessuna offerta in sospeso."},
+ calendar:{title:"Calendario",season:"Stagione",matchday:"Giornata",upcoming:"prossima"},
+ table:{title:"Classifica",pos:"#",club:"Club",p:"PG",pts:"PTI",w:"V",d:"N",l:"P",gd:"DR"},
+ season:{title:"🏁 Riepilogo stagione",completeAll:"Completa tutte le partite per ricevere i premi e proseguire.",remaining:"Partite rimanenti",finished:"terminata",wins:"Vittorie",draws:"Pareggi",losses:"Sconfitte",avg:"Media rosa",evolution:"📈 Evoluzione della carriera",startNext:"🔄 INIZIA {season}"},
+ news:{title:"📰 Notizie",sub:"Il mondo del calcio segue la tua carriera minuto per minuto.",count:"notizie",empty:"Ancora nessuna notizia",emptySub:"Gioca partite, tratta trasferimenti o termina una stagione per generare notizie."},
+ jobs:{title:"💼 Offerte di lavoro",sub:"I buoni risultati attirano altri club. Accetta un'offerta per cambiare squadra e continuare la stessa carriera.",empty:"Nessuna offerta di lavoro al momento",emptySub:"Termina una stagione con buoni risultati e potrebbero arrivare offerte.",budget:"Budget",target:"Obiettivo",accept:"✅ ACCETTA",reject:"❌ RIFIUTA"},
+ saves:{title:"Le mie carriere",backHome:"🏠 Home",empty:"Nessuna carriera salvata",emptySub:"Crea la tua prima carriera e premi Salva.",create:"CREA CARRIERA",cont:"CONTINUA",del:"ELIMINA",confirmDel:"Eliminare questa carriera? Non si può annullare."},
+ europe:{title:"🌍 Europa",competition:"Competizione",group:"Fase a gironi",knockout:"Fase a eliminazione",r16:"Ottavi di finale",qf:"Quarti di finale",sf:"Semifinale",final:"Finale",champion:"🏆 Campioni d'Europa!",eliminated:"Eliminato",notQualified:"Nessuna competizione europea questa stagione.",leg1:"Andata",leg2:"Ritorno",aggregate:"Aggregato",advanced:"passate al turno successivo!",outMsg:"eliminati dall'Europa.",groupTable:"Classifica del girone",historyT:"Percorso europeo"},
+ common:{yes:"Sì",no:"No"},
+ match:{title:"📋 Report partita",scorers:"Marcatori",noGoals:"Nessun gol della tua squadra."},
+ toast:{needName:"Inserisci il nome dell'allenatore",created:"Carriera creata!",noBudget:"Budget trasferimenti insufficiente",noWage:"Questo trasferimento supererebbe il budget stipendi",hijacked:"Il {club} ha soffiato {name}!",dealDone:"Trasferimento completato!",roundUp:"Il club chiede un'offerta migliore. Nuovo round.",broken:"Trattativa saltata dopo 3 round",alreadyListed:"Questo giocatore è già sul mercato",listed:"{name} è sul mercato",cantSellStarter:"Non puoi vendere un titolare: mandalo prima in panchina",saleAccepted:"Vendita accettata. I fondi sono aggiunti al budget.",offerRejected:"Offerta rifiutata",formationChanged:"Modulo cambiato in {f}",needCalendar:"Completa prima l'intero calendario",jobAccepted:"Nuovo incarico accettato!",jobRejected:"Offerta rifiutata",loaded:"Carriera caricata",notFound:"Carriera non trovata",saved:"Carriera salvata",noActive:"Nessuna carriera attiva",simulated:"Partita simulata",newSeason:"Nuova stagione iniziata!",dropOnStarter:"Trascina il giocatore su un titolare per sostituirlo",injury:"{name} si è infortunato — assente {n} partite",autoSub:"{name2} entra al posto dell'infortunato {name}",blockedInjured:"Quel giocatore è infortunato e non può giocare"}
+}
+};
+
+function t(path,vars){
+ const parts=path.split(".");
+ let node=I18N[lang]||I18N.en;
+ for(const p of parts){node=node&&node[p];}
+ if(node===undefined){node=I18N.en;for(const p of parts)node=node&&node[p];}
+ let str=node!==undefined?node:path;
+ if(vars)Object.keys(vars).forEach(k=>{str=str.replace(new RegExp("\\{"+k+"\\}","g"),vars[k]);});
+ return str;
+}
+function setLang(l){lang=LANGS.includes(l)?l:"es";localStorage.setItem("wmLang",lang);renderLangSelect();if(state){renderNav();renderPage();}else{renderHome();}}
+function renderLangSelect(){const s=document.getElementById("langSelect");s.innerHTML=LANGS.map(l=>`<option value="${l}" ${l===lang?"selected":""}>${LANG_NAMES[l]}</option>`).join("");}
+
+/* ===================== MODAL ===================== */
+let modalCallback=null;
+function showConfirm(msg,cb){
+ modalCallback=cb;
+ document.getElementById("modalOverlay").innerHTML=`<div class="modal-box"><p>${esc(msg)}</p><div class="offer-actions"><button onclick="modalConfirm(true)">${t("common.yes")}</button><button class="danger" onclick="modalConfirm(false)">${t("common.no")}</button></div></div>`;
+ document.getElementById("modalOverlay").classList.remove("hidden");
+}
+function modalConfirm(v){document.getElementById("modalOverlay").classList.add("hidden");const cb=modalCallback;modalCallback=null;if(cb)cb(v);}
+
+/* ===================== LEAGUE DATA (corrected for 2026-27) ===================== */
+const LEAGUES={
+"Premier League":["Arsenal","Aston Villa","Bournemouth","Brentford","Brighton","Burnley","Chelsea","Coventry","Crystal Palace","Everton","Fulham","Hull","Ipswich","Leeds","Liverpool","Manchester City","Manchester United","Newcastle","Nottingham Forest","Sunderland"],
+"La Liga":["Alaves","Athletic Club","Atletico Madrid","Barcelona","Celta","Deportivo La Coruna","Elche","Espanyol","Getafe","Malaga","Osasuna","Racing Santander","Rayo Vallecano","Real Betis","Real Madrid","Real Sociedad","Sevilla","Valencia","Villarreal","Levante"],
+"Serie A":["Atalanta","Bologna","Cagliari","Como","Fiorentina","Frosinone","Genoa","Inter","Juventus","Lazio","Lecce","Milan","Monza","Napoli","Parma","Roma","Sassuolo","Torino","Udinese","Venezia"],
+"Bundesliga":["Augsburg","Bayer Leverkusen","Bayern Munich","Borussia Dortmund","Eintracht Frankfurt","Freiburg","Hamburg","Heidenheim","Hoffenheim","Mainz","Borussia Monchengladbach","RB Leipzig","St Pauli","Stuttgart","Union Berlin","Werder Bremen","Wolfsburg","Cologne"],
+"Ligue 1":["Angers","Auxerre","Brest","Le Havre","Le Mans","Lens","Lille","Lorient","Lyon","Marseille","Monaco","Nice","Paris FC","Paris Saint-Germain","Rennes","Strasbourg","Toulouse","Troyes"]
+};
+
+const BIG_CLUBS=["Arsenal","Manchester City","Liverpool","Chelsea","Manchester United","Tottenham","Real Madrid","Barcelona","Atletico Madrid","Inter","Milan","Juventus","Napoli","Bayern Munich","Borussia Dortmund","Bayer Leverkusen","Paris Saint-Germain","Marseille","Monaco"];
+function clubTier(name){return BIG_CLUBS.includes(name)?"big":"mid";}
+
+const stars={
+"Arsenal":[["David Raya","GK",85],["William Saliba","CB",87],["Gabriel","CB",86],["Declan Rice","CM",87],["Martin Odegaard","CAM",89],["Bukayo Saka","RW",90],["Kai Havertz","ST",84]],
+"Manchester City":[["Gianluigi Donnarumma","GK",89],["Ruben Dias","CB",87],["Josko Gvardiol","CB",85],["Rodri","CDM",91],["Bernardo Silva","CAM",88],["Phil Foden","CAM",89],["Erling Haaland","ST",91]],
+"Liverpool":[["Alisson","GK",89],["Virgil van Dijk","CB",89],["Ibrahima Konate","CB",85],["Ryan Gravenberch","CM",84],["Alexis Mac Allister","CM",86],["Florian Wirtz","CAM",89],["Mohamed Salah","RW",90]],
+"Chelsea":[["Robert Sanchez","GK",80],["Levi Colwill","CB",82],["Moises Caicedo","CDM",87],["Enzo Fernandez","CM",86],["Cole Palmer","CAM",88],["Pedro Neto","LW",83],["Joao Pedro","ST",82]],
+"Manchester United":[["Andre Onana","GK",82],["Matthijs de Ligt","CB",84],["Leny Yoro","CB",80],["Bruno Fernandes","CAM",87],["Kobbie Mainoo","CM",81],["Matheus Cunha","ST",84],["Benjamin Sesko","ST",82]],
+"Real Madrid":[["Thibaut Courtois","GK",89],["Antonio Rudiger","CB",86],["Jude Bellingham","CAM",90],["Federico Valverde","CM",89],["Vinicius Jr","LW",90],["Kylian Mbappe","ST",91],["Rodrygo","RW",86]],
+"Barcelona":[["Joan Garcia","GK",82],["Pau Cubarsi","CB",82],["Pedri","CM",89],["Gavi","CM",84],["Lamine Yamal","RW",91],["Raphinha","LW",88],["Robert Lewandowski","ST",88]],
+"Atletico Madrid":[["Jan Oblak","GK",88],["Jose Gimenez","CB",84],["Marcos Llorente","CM",84],["Rodrigo De Paul","CM",84],["Julian Alvarez","ST",88],["Antoine Griezmann","ST",87]],
+"Inter":[["Yann Sommer","GK",86],["Alessandro Bastoni","CB",87],["Nicolo Barella","CM",87],["Hakan Calhanoglu","CM",86],["Lautaro Martinez","ST",89],["Marcus Thuram","ST",86]],
+"Juventus":[["Michele Di Gregorio","GK",82],["Bremer","CB",85],["Manuel Locatelli","CM",84],["Teun Koopmeiners","CM",84],["Kenan Yildiz","LW",82],["Jonathan David","ST",85]],
+"Bayern Munich":[["Manuel Neuer","GK",86],["Dayot Upamecano","CB",84],["Joshua Kimmich","CM",88],["Jamal Musiala","CAM",91],["Michael Olise","RW",86],["Harry Kane","ST",90]],
+"Borussia Dortmund":[["Gregor Kobel","GK",88],["Nico Schlotterbeck","CB",85],["Julian Brandt","CAM",83],["Serhou Guirassy","ST",84],["Karim Adeyemi","LW",82]],
+"Paris Saint-Germain":[["Gianluigi Donnarumma","GK",89],["Marquinhos","CB",85],["Vitinha","CM",88],["Warren Zaire-Emery","CM",83],["Khvicha Kvaratskhelia","LW",87],["Ousmane Dembele","RW",90]],
+"Marseille":[["Geronimo Rulli","GK",82],["Leonardo Balerdi","CB",80],["Adrien Rabiot","CM",84],["Mason Greenwood","RW",82],["Pierre-Emerick Aubameyang","ST",80]]
+};
+
+const NAT={
+"David Raya":"ES","William Saliba":"FR","Gabriel":"BR","Declan Rice":"GB","Martin Odegaard":"NO","Bukayo Saka":"GB","Kai Havertz":"DE",
+"Gianluigi Donnarumma":"IT","Ruben Dias":"PT","Josko Gvardiol":"HR","Rodri":"ES","Bernardo Silva":"PT","Phil Foden":"GB","Erling Haaland":"NO",
+"Alisson":"BR","Virgil van Dijk":"NL","Ibrahima Konate":"FR","Ryan Gravenberch":"NL","Alexis Mac Allister":"AR","Florian Wirtz":"DE","Mohamed Salah":"EG",
+"Robert Sanchez":"ES","Levi Colwill":"GB","Moises Caicedo":"EC","Enzo Fernandez":"AR","Cole Palmer":"GB","Pedro Neto":"PT","Joao Pedro":"BR",
+"Andre Onana":"CM","Matthijs de Ligt":"NL","Leny Yoro":"FR","Bruno Fernandes":"PT","Kobbie Mainoo":"GB","Matheus Cunha":"BR","Benjamin Sesko":"SI",
+"Thibaut Courtois":"BE","Antonio Rudiger":"DE","Jude Bellingham":"GB","Federico Valverde":"UY","Vinicius Jr":"BR","Kylian Mbappe":"FR","Rodrygo":"BR",
+"Joan Garcia":"ES","Pau Cubarsi":"ES","Pedri":"ES","Gavi":"ES","Lamine Yamal":"ES","Raphinha":"BR","Robert Lewandowski":"PL",
+"Jan Oblak":"SI","Jose Gimenez":"UY","Marcos Llorente":"ES","Rodrigo De Paul":"AR","Julian Alvarez":"AR","Antoine Griezmann":"FR",
+"Yann Sommer":"CH","Alessandro Bastoni":"IT","Nicolo Barella":"IT","Hakan Calhanoglu":"TR","Lautaro Martinez":"AR","Marcus Thuram":"FR",
+"Michele Di Gregorio":"IT","Bremer":"BR","Manuel Locatelli":"IT","Teun Koopmeiners":"NL","Kenan Yildiz":"TR","Jonathan David":"CA",
+"Manuel Neuer":"DE","Dayot Upamecano":"FR","Joshua Kimmich":"DE","Jamal Musiala":"DE","Michael Olise":"FR","Harry Kane":"GB",
+"Gregor Kobel":"CH","Nico Schlotterbeck":"DE","Julian Brandt":"DE","Serhou Guirassy":"GN","Karim Adeyemi":"DE",
+"Marquinhos":"BR","Vitinha":"PT","Warren Zaire-Emery":"FR","Khvicha Kvaratskhelia":"GE","Ousmane Dembele":"FR",
+"Geronimo Rulli":"AR","Leonardo Balerdi":"AR","Adrien Rabiot":"FR","Mason Greenwood":"GB","Pierre-Emerick Aubameyang":"GA",
+"Victor Osimhen":"NG","Rafael Leao":"PT","Federico Chiesa":"IT","Rodrigo Bentancur":"UY","Nico Williams":"ES","Xavi Simons":"NL",
+"Bradley Barcola":"FR","Joao Cancelo":"PT","Kepa Arrizabalaga":"ES","Milos Kerkez":"HU","Rico Lewis":"GB","Ansu Fati":"ES",
+"Takefusa Kubo":"JP","Evan Ferguson":"IE","Endrick":"BR","Desire Doue":"FR","Arda Guler":"TR","Illia Zabarnyi":"UA"
+};
+const FLAG={ES:"🇪🇸",GB:"🏴",FR:"🇫🇷",DE:"🇩🇪",BR:"🇧🇷",NO:"🇳🇴",EG:"🇪🇬",EC:"🇪🇨",AR:"🇦🇷",PT:"🇵🇹",CM:"🇨🇲",SI:"🇸🇮",BE:"🇧🇪",UY:"🇺🇾",PL:"🇵🇱",TR:"🇹🇷",IT:"🇮🇹",CH:"🇨🇭",CA:"🇨🇦",GN:"🇬🇳",GE:"🇬🇪",GA:"🇬🇦",NL:"🇳🇱",HR:"🇭🇷",NG:"🇳🇬",HU:"🇭🇺",JP:"🇯🇵",IE:"🇮🇪",UA:"🇺🇦"};
+const NAT_POOL=["ES","GB","FR","DE","BR","NL","PT","AR","IT"];
+
+const rosterUpdates={
+ "Arsenal":{in:[["Bruno Guimaraes","CM",88]],out:["Leandro Trossard","Jakob Kiwior","Christian Norgaard","Gabriel Martinelli","Gabriel Jesus","Fabio Vieira"]},
+ "Manchester City":{in:[["Tijjani Reijnders","CM",86],["Jeremy Doku","LW",85]],out:["Rodri","Jack Grealish","Savinho"]},
+ "Liverpool":{in:[["Bradley Barcola","LW",88],["Alexander Isak","ST",89]],out:["Mohamed Salah"]},
+ "Chelsea":{in:[["Emiliano Martinez","GK",86]],out:["Nicolas Jackson","Enzo Fernandez"]},
+ "Manchester United":{in:[["Carlos Baleba","CM",84]],out:[]},
+ "Real Madrid":{in:[["Bernardo Silva","CM",88],["Denzel Dumfries","RB",84]],out:[]},
+ "Barcelona":{in:[["Gabriel Jesus","ST",82],["Rodrigo","CDM",88],["Joao Cancelo","RB",84]],out:["Robert Lewandowski","Rodri"]},
+ "Atletico Madrid":{in:[["Cristian Romero","CB",87],["Jonathan David","ST",85]],out:["Antoine Griezmann"]},
+ "Inter":{in:[["John Stones","CB",85]],out:["Denzel Dumfries"]},
+ "Juventus":{in:[["Kamil Grabara","GK",82]],out:["Jonathan David"]},
+ "Bayern Munich":{in:[],out:["Leon Goretzka"]},
+ "Borussia Dortmund":{in:[["Joey Veerman","CM",84]],out:["Julian Brandt"]},
+ "Paris Saint-Germain":{in:[],out:["Bradley Barcola"]},
+ "Marseille":{in:[],out:[]}
+};
+
+const FORMATIONS={
+ "4-3-3":{need:["LW","ST","RW","CM","CDM","CM","LB","CB","CB","RB","GK"]},
+ "4-4-2":{need:["ST","ST","LW","CM","CM","RW","LB","CB","CB","RB","GK"]},
+ "4-2-3-1":{need:["ST","CAM","CAM","CAM","CDM","CDM","LB","CB","CB","RB","GK"]},
+ "3-5-2":{need:["ST","ST","CDM","CM","CAM","CM","CDM","CB","CB","CB","GK"]},
+ "3-4-3":{need:["LW","ST","RW","LM","CM","CM","RM","CB","CB","CB","GK"]},
+ "5-3-2":{need:["ST","ST","CM","CAM","CM","LB","CB","CB","CB","RB","GK"]}
+};
+const FORMATION_COORDS={
+ "4-3-3":[{pos:"GK",x:50,y:88},{pos:"LB",x:15,y:65},{pos:"CB",x:38,y:70},{pos:"CB",x:62,y:70},{pos:"RB",x:85,y:65},{pos:"CDM",x:50,y:50},{pos:"CM",x:32,y:36},{pos:"CM",x:68,y:36},{pos:"LW",x:15,y:14},{pos:"ST",x:50,y:8},{pos:"RW",x:85,y:14}],
+ "4-4-2":[{pos:"GK",x:50,y:88},{pos:"LB",x:15,y:65},{pos:"CB",x:38,y:70},{pos:"CB",x:62,y:70},{pos:"RB",x:85,y:65},{pos:"LW",x:15,y:40},{pos:"CM",x:38,y:42},{pos:"CM",x:62,y:42},{pos:"RW",x:85,y:40},{pos:"ST",x:38,y:11},{pos:"ST",x:62,y:11}],
+ "4-2-3-1":[{pos:"GK",x:50,y:88},{pos:"LB",x:15,y:65},{pos:"CB",x:38,y:70},{pos:"CB",x:62,y:70},{pos:"RB",x:85,y:65},{pos:"CDM",x:38,y:52},{pos:"CDM",x:62,y:52},{pos:"CAM",x:18,y:28},{pos:"CAM",x:50,y:24},{pos:"CAM",x:82,y:28},{pos:"ST",x:50,y:8}],
+ "3-5-2":[{pos:"GK",x:50,y:88},{pos:"CB",x:28,y:68},{pos:"CB",x:50,y:72},{pos:"CB",x:72,y:68},{pos:"CDM",x:20,y:46},{pos:"CM",x:40,y:36},{pos:"CAM",x:50,y:22},{pos:"CM",x:60,y:36},{pos:"CDM",x:80,y:46},{pos:"ST",x:38,y:9},{pos:"ST",x:62,y:9}],
+ "3-4-3":[{pos:"GK",x:50,y:88},{pos:"CB",x:28,y:68},{pos:"CB",x:50,y:72},{pos:"CB",x:72,y:68},{pos:"LM",x:12,y:42},{pos:"CM",x:38,y:38},{pos:"CM",x:62,y:38},{pos:"RM",x:88,y:42},{pos:"LW",x:15,y:11},{pos:"ST",x:50,y:7},{pos:"RW",x:85,y:11}],
+ "5-3-2":[{pos:"GK",x:50,y:88},{pos:"LB",x:8,y:56},{pos:"CB",x:31,y:68},{pos:"CB",x:50,y:72},{pos:"CB",x:69,y:68},{pos:"RB",x:92,y:56},{pos:"CM",x:32,y:36},{pos:"CAM",x:50,y:22},{pos:"CM",x:68,y:36},{pos:"ST",x:38,y:9},{pos:"ST",x:62,y:9}]
+};
+
+/* ===================== VALUATION ===================== */
+function tierValue(rating){
+ if(rating>=90)return 90+(rating-90)*11;
+ if(rating>=85)return 34+(rating-85)*11.2;
+ if(rating>=80)return 12+(rating-80)*4.4;
+ if(rating>=75)return 4+(rating-75)*1.6;
+ if(rating>=70)return 1.2+(rating-70)*0.56;
+ return Math.max(0.2,0.2+(rating-60)*0.1);
+}
+function ageFactor(age){
+ if(age<=20)return 1.4;if(age<=22)return 1.25;if(age<=24)return 1.1;if(age<=27)return 1.0;
+ if(age<=29)return 0.9;if(age<=31)return 0.68;if(age<=33)return 0.45;return 0.28;
+}
+function computeValue(rating,age){return Number(Math.max(0.3,tierValue(rating)*ageFactor(age||26)).toFixed(1));}
+function computeWage(rating,age){return Number(Math.max(0.2,((rating-58)/8)*Math.min(1.15,ageFactor(age||26))).toFixed(2));}
+function randAge(min,max){return Math.floor(min+Math.random()*(max-min+1));}
+function pickNat(name){return NAT[name]||NAT_POOL[Math.floor(Math.random()*NAT_POOL.length)];}
+function flagOf(code){return FLAG[code]||"🏳️";}
+
+const MARKET_TEMPLATE=[
+["Victor Osimhen","ST",88,27],["Rafael Leao","LW",87,26],["Federico Chiesa","RW",83,28],
+["Rodrigo Bentancur","CM",83,28],["Nico Williams","LW",86,23],["Jonathan David","ST",85,25],
+["Khvicha Kvaratskhelia","LW",89,24],["Dani Olmo","CAM",85,27],["Benjamin Sesko","ST",84,23],
+["Xavi Simons","CAM",86,22],["Bruno Guimaraes","CDM",87,27],["Bradley Barcola","LW",86,23],
+["Bernardo Silva","CAM",87,31],["Joao Cancelo","RB",84,31],["Michael Olise","RW",87,23],
+["Alessandro Bastoni","CB",87,26],["Nico Schlotterbeck","CB",85,25],["Kenan Yildiz","LW",82,20],
+["Warren Zaire-Emery","CM",83,19],["Lamine Yamal","RW",91,18],["Endrick","ST",79,19],
+["Antonio Silva","CB",83,21],["Desire Doue","RW",84,20],["Joshua Zirkzee","ST",78,24],
+["Youssoufa Moukoko","ST",76,20],["Arda Guler","CAM",85,20],["Gabri Veiga","CM",81,23],
+["Illia Zabarnyi","CB",82,22],["Kepa Arrizabalaga","GK",80,30],["Jan Oblak","GK",88,32],
+["Milos Kerkez","LB",84,21],["Rico Lewis","RB",80,20],["Facundo Buonanotte","CAM",78,20],
+["Amine Gouiri","ST",81,25],["Ansu Fati","LW",78,22],["Takefusa Kubo","RW",83,24],
+["Evan Ferguson","ST",78,20],["Pau Cubarsi","CB",84,18],["Warren Bondo","CDM",77,21]
+];
+function marketPool(){
+ return MARKET_TEMPLATE.map(([name,pos,rating,age])=>{
+  const value=computeValue(rating,age),wage=computeWage(rating,age);
+  const interest=1+Math.floor(Math.random()*3)+(rating>=87?1:0);
+  return {name,pos,rating,age,value,wage,interest,nat:pickNat(name)};
+ });
+}
+
+/* ===================== SQUAD BUILD ===================== */
+function assignNumbers(players){
+ const used=new Set();
+ players.forEach((p,i)=>{
+  let n;
+  if(i<11){n=i+1;}
+  else{do{n=14+Math.floor(Math.random()*76);}while(used.has(n));}
+  while(used.has(n))n++;
+  used.add(n);p.num=n;
+ });
+}
+function squad(team){
+ const base=(stars[team]||[]).map(x=>({name:x[0],pos:x[1],rating:x[2],age:randAge(23,33)}));
+ const up=rosterUpdates[team]||{in:[],out:[]};
+ let players=base.filter(p=>!up.out.includes(p.name));
+ up.in.forEach(x=>{if(!players.some(p=>p.name===x[0]))players.push({name:x[0],pos:x[1],rating:x[2],age:randAge(19,29)})});
+ const generic=["Lucas Martin","Marco Rossi","Nico Santos","Adrian Garcia","Milan Petrov","Tom Wilson","Daniel Silva","Leo Costa","Alex Pereira","Mateo Ruiz","Samuel Brown","David Costa","Ivan Novak","Noah Smith","Leo Garcia","Pablo Torres","Ethan Miller","Luis Silva"];
+ const positions=["GK","CB","CB","LB","RB","CDM","CM","CM","LW","ST","RW","GK","CB","CB","CM","CAM","LW","ST"];
+ let i=0;
+ while(players.length<20){
+  const r=68+(i%14);
+  players.push({name:`${generic[i%generic.length]} ${team.split(" ")[0]}`,pos:positions[players.length%positions.length],rating:r,age:randAge(18,32)});
+  i++;
+ }
+ players=players.slice(0,20).map(p=>({...p,value:computeValue(p.rating,p.age),salary:computeWage(p.rating,p.age),nat:pickNat(p.name),injured:0}));
+ assignNumbers(players);
+ return players;
+}
+
+/* ===================== MATCH ENGINE ===================== */
+function hashCode(str){let h=0;for(let i=0;i<str.length;i++){h=(h<<5)-h+str.charCodeAt(i);h|=0;}return h;}
+function teamStrength(name,seasonNo){
+ const base=clubTier(name)==="big"?84:75;
+ const offset=(Math.abs(hashCode(name+"-"+(seasonNo||1)))%9)-4;
+ return base+offset;
+}
+function userXIStrength(){
+ const arr=state.startingXI.map(n=>state.squad.find(p=>p.name===n)).filter(Boolean);
+ if(!arr.length)return 70;
+ return arr.reduce((a,p)=>a+p.rating,0)/arr.length;
+}
+function getStrength(team){return team===state.team?userXIStrength():teamStrength(team,state.seasonNo);}
+function poissonGoals(lambda){
+ lambda=Math.max(0.15,lambda);
+ let L=Math.exp(-lambda),k=0,p=1;
+ do{k++;p*=Math.random();}while(p>L);
+ return k-1;
+}
+function poissonPair(homeStr,awayStr){
+ const diff=homeStr-awayStr;
+ const hg=poissonGoals(1.35+diff/20);
+ const ag=poissonGoals(1.05-diff/24);
+ return {hg,ag};
+}
+function pickScorers(n){
+ if(n<=0)return [];
+ const weights={ST:4,RW:3,LW:3,CAM:3,CM:2,CDM:1,CB:0.3,LB:0.3,RB:0.3,GK:0.05};
+ const pool=[];
+ state.startingXI.forEach(name=>{
+  const p=state.squad.find(x=>x.name===name);if(!p)return;
+  const w=Math.max(1,Math.round((weights[p.pos]||1)*3));
+  for(let i=0;i<w;i++)pool.push(p.name);
+ });
+ if(!pool.length)return [];
+ const out=[];
+ for(let i=0;i<n;i++)out.push(pool[Math.floor(Math.random()*pool.length)]);
+ return out;
+}
+function playFixture(home,away,detailed){
+ const homeBase=getStrength(home), awayBase=getStrength(away);
+ const homeAdv=home===state.team?3.5:2.8;
+ const formNoise=(Math.random()-.5)*5;
+ const homeStr=homeBase+homeAdv+formNoise;
+ const awayStr=awayBase-formNoise*.35;
+ const diff=homeStr-awayStr;
+ const hg=poissonGoals(1.28+diff/18);
+ const ag=poissonGoals(1.02-diff/22);
+ let scorers=null;
+ if(detailed&&(home===state.team||away===state.team)){
+   const userGoals=home===state.team?hg:ag;
+   scorers=pickScorers(userGoals);
+ }
+ return {hg,ag,scorers,home,away,homeAdv:Number(homeAdv.toFixed(1))};
+}
+function updateTable(home,away,hg,ag){
+ const hRow=state.table.find(x=>x.team===home),aRow=state.table.find(x=>x.team===away);
+ if(!hRow||!aRow)return;
+ hRow.p++;aRow.p++;hRow.gf+=hg;hRow.ga+=ag;aRow.gf+=ag;aRow.ga+=hg;
+ if(hg>ag){hRow.w++;hRow.pts+=3;aRow.l++;}else if(hg<ag){aRow.w++;aRow.pts+=3;hRow.l++;}else{hRow.d++;aRow.d++;hRow.pts++;aRow.pts++;}
+}
+function rollInjury(){
+ if(Math.random()>0.08)return null;
+ const candidates=state.startingXI.map(n=>state.squad.find(p=>p.name===n)).filter(p=>p&&!p.injured);
+ if(!candidates.length)return null;
+ const p=candidates[Math.floor(Math.random()*candidates.length)];
+ const dur=1+Math.floor(Math.random()*3);
+ p.injured=dur;
+ let autoSubName=null;
+ const idx=state.startingXI.indexOf(p.name);
+ if(idx>=0){
+  const replacement=state.bench.map(n=>state.squad.find(x=>x.name===n)).find(x=>x&&!x.injured);
+  if(replacement){
+   state.startingXI[idx]=replacement.name;
+   state.bench=state.bench.filter(n=>n!==replacement.name);
+   if(!state.bench.includes(p.name))state.bench.push(p.name);
+   autoSubName=replacement.name;
+  }
+ }
+ return {name:p.name,dur,autoSubName};
+}
+
+/* ===================== SCHEDULE (double round-robin) ===================== */
+function generateSchedule(teams){
+ let arr=[...teams];
+ const n=arr.length,half=n/2,rounds=[];
+ let list=[...arr];
+ for(let r=0;r<n-1;r++){
+  const round=[];
+  for(let i=0;i<half;i++){
+   const home=list[i],away=list[n-1-i];
+   if(r%2===0)round.push({home,away});else round.push({home:away,away:home});
+  }
+  rounds.push(round);
+  const fixed=list[0],rest=list.slice(1);
+  rest.unshift(rest.pop());
+  list=[fixed,...rest];
+ }
+ const secondLeg=rounds.map(round=>round.map(f=>({home:f.away,away:f.home})));
+ return [...rounds,...secondLeg];
+}
+
+/* ===================== EUROPE ===================== */
+/* UEFA 2026/27: 36-team league phase in each competition.
+   UCL/UEL: 8 league-phase matches; UECL: 6. Top 8 -> R16,
+   places 9-24 -> knockout play-off, 25+ eliminated. */
+const EUROPE_TEAMS={
+ UCL:[
+  "LASK","Sabah","Club Brugge","Slavia Praha","Arsenal","Aston Villa","Liverpool","Manchester City","Manchester United",
+  "Lens","Lille","Paris Saint-Germain","Bayern Munich","Borussia Dortmund","RB Leipzig","Stuttgart",
+  "AEK Athens","Como","Inter","Napoli","Roma","Feyenoord","PSV","Bodo/Glimt","Viking","Porto","Sporting CP",
+  "Slovan Bratislava","Barcelona","Atletico Madrid","Real Betis","Real Madrid","Villarreal","Fenerbahce","Galatasaray","Shakhtar"
+ ],
+ UEL:[
+  "Crystal Palace","Bournemouth","Sunderland","Milan","Juventus","Real Sociedad","Celta","Hoffenheim","Bayer Leverkusen",
+  "Marseille","Rennes","AZ Alkmaar","Torreense","Celje","Celtic","GNK Dinamo","Hapoel Beer-Sheva","Levski Sofia",
+  "Lyon","NEC Nijmegen","Olympiacos","Sparta Praha","Sturm Graz","Union SG","Anderlecht","Ararat-Armenia","Benfica",
+  "Besiktas","Ferencvaros","Jagiellonia","Lech Poznan","Lillestrom","OFI Crete","Omonia","Salzburg","Viktoria Plzen"
+ ],
+ UECL:[
+  "Egnatia","Inter Escaldes","Gent","Sint-Truiden","Borac","CSKA Sofia","Hajduk Split","Pafos","Jablonec","Aarhus",
+  "Copenhagen","Midtjylland","Nordsjaelland","Brighton","KuPS","Monaco","Iberia Tbilisi","Freiburg","Lincoln Red Imps",
+  "Panathinaikos","Atalanta","Kairat Almaty","Riga","Kauno Zalgiris","Ajax","Twente","Brann","Braga","U Craiova",
+  "Hearts","Crvena Zvezda","Getafe","Mjallby","Lugano","Thun","Trabzonspor"
+ ]
+};
+const EUROPE_SCHEDULE_MATCHES={UCL:8,UEL:8,UECL:6};
+const EUROPE_DATES={UCL:["8-10 Sep","13-14 Oct","20-21 Oct","3-4 Nov","24-25 Nov","8-9 Dec","19-20 Jan","27 Jan"],UEL:["16-17 Sep","1 Oct","22 Oct","5 Nov","26 Nov","10 Dec","21 Jan","28 Jan"],UECL:["15 Oct","22 Oct","5 Nov","26 Nov","10 Dec","17 Dec"]};
+
+function europeCompetitionFor(team){
+ for(const c of Object.keys(EUROPE_TEAMS)) if(EUROPE_TEAMS[c].includes(team)) return c;
+ return null;
+}
+function europeStageLabel(comp){return comp==="UCL"?"Champions League":comp==="UEL"?"Europa League":"Conference League";}
+function shuffleArr(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+function initEurope(){
+ const comp=europeCompetitionFor(state.team);
+ if(!comp){state.europe=null;return;}
+ const pool=shuffleArr(EUROPE_TEAMS[comp].filter(c=>c!==state.team));
+ const n=EUROPE_SCHEDULE_MATCHES[comp];
+ const opponents=pool.slice(0,n);
+ const teams=[state.team,...opponents];
+ const table={};teams.forEach(tm=>table[tm]={p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0});
+ state.europe={
+   comp,phase:"league",leagueTeams:teams,table,played:0,total:n,
+   opponents,history:[],qualified:false,knockoutRound:null
+ };
+}
+
+function europeLeagueMatchday(){
+ const e=state.europe;
+ if(!e||e.phase!=="league"||e.played>=e.total)return;
+ const idx=e.played;
+ const opp=e.opponents[idx];
+ const home=Math.random()<0.5;
+ const h=home?state.team:opp,a=home?opp:state.team;
+ const r=playFixture(h,a,true);
+ const tbl=e.table;
+ tbl[h].p++;tbl[a].p++;tbl[h].gf+=r.hg;tbl[h].ga+=r.ag;tbl[a].gf+=r.ag;tbl[a].ga+=r.hg;
+ if(r.hg>r.ag){tbl[h].w++;tbl[h].pts+=3;tbl[a].l++;}else if(r.hg<r.ag){tbl[a].w++;tbl[a].pts+=3;tbl[h].l++;}else{tbl[h].d++;tbl[a].d++;tbl[h].pts++;tbl[a].pts++;}
+ e.history.push({stage:"league",matchday:idx+1,home:h,away:a,hg:r.hg,ag:r.ag,scorers:r.scorers,date:EUROPE_DATES[e.comp][idx]});
+ e.played++;
+ if(e.played>=e.total){
+   const rank=Object.entries(e.table).map(([team,v])=>({team,...v})).sort((x,y)=>y.pts-x.pts||(y.gf-y.ga)-(x.gf-x.ga)||y.gf-x.gf);
+   const pos=rank.findIndex(x=>x.team===state.team)+1;
+   if(pos<=8){e.phase="r16";e.qualified=true;e.knockoutRound="r16";addNews("🌍",state.team+" termina entre los 8 primeros de la "+europeStageLabel(e.comp),"Acceso directo a octavos de final.");}
+   else if(pos<=24){e.phase="playoff";e.qualified=true;e.knockoutRound="playoff";addNews("🌍",state.team+" entra en el playoff europeo","Posición "+pos+" en la fase liga.");}
+   else {e.phase="out";addNews("😔",state.team+" queda eliminado de Europa","Posición "+pos+" en la fase liga.");}
+ }
+}
+
+function playEuropeKnockout(){
+ const e=state.europe;
+ if(!e||!["playoff","r16","qf","sf","final"].includes(e.phase))return;
+ const pool=EUROPE_TEAMS[e.comp].filter(c=>c!==state.team&&!e.opponents.includes(c));
+ const opp=pool[Math.floor(Math.random()*pool.length)]||"Rival europeo";
+ const twoLeg=e.phase!=="final";
+ const leg1=playFixture(state.team,opp,true);
+ const leg2=twoLeg?playFixture(opp,state.team,true):{hg:0,ag:0,scorers:[]};
+ const userAgg=twoLeg?leg1.hg+leg2.ag:leg1.hg;
+ const oppAgg=twoLeg?leg1.ag+leg2.hg:leg1.ag;
+ const advanced=userAgg>oppAgg||(userAgg===oppAgg&&Math.random()<0.5);
+ const stage=e.phase;
+ e.history.push({stage,opp,leg1,leg2,userAgg,oppAgg,advanced});
+ if(!advanced){e.phase="out";addNews("😔",state.team+" eliminado de la "+europeStageLabel(e.comp),"Rival: "+opp);return;}
+ if(stage==="final"){e.phase="champion";state.budget=Number((state.budget+40).toFixed(1));state.confidence=Math.min(100,(state.confidence||60)+15);addNews("🏆",t("europe.champion"),state.team);return;}
+ e.phase=stage==="playoff"?"r16":stage==="r16"?"qf":stage==="qf"?"sf":"final";
+ state.budget=Number((state.budget+8).toFixed(1));state.confidence=Math.min(100,(state.confidence||60)+5);
+ addNews("🌍",state.team+" avanza en Europa",europeStageLabel(e.comp)+" · "+stage);
+}
+let state=null,current="home",draggedPlayer=null;
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+function toast(msg){const e=document.getElementById("toast");e.textContent=msg;e.style.display="block";clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>e.style.display="none",2400)}
+function money(n){return Number(n||0).toFixed(1)}
+function wageBill(){return state?state.squad.reduce((a,p)=>a+(p.salary||0),0):0}
+
+/* ===================== NAV / ROUTING ===================== */
+function renderNav(){
+ document.getElementById("nav").classList.remove("hidden");
+ const tabs=[["dashboard",t("nav.home")],["squad",t("nav.squad")],["market",t("nav.market")],["calendar",t("nav.calendar")],["table",t("nav.table")],["europe",t("nav.europe")],["offers",t("nav.offers")],["news",t("nav.news")],["jobs",t("nav.jobs")],["season",t("nav.season")],["saves",t("nav.saves")]];
+ document.getElementById("nav").innerHTML=tabs.map(x=>`<button class="${current==x[0]?"active":""}" onclick="go('${x[0]}')">${x[1]}</button>`).join("");
+}
+function go(x){current=x;if(x==="saves"){renderSaves();return}renderNav();renderPage()}
+function renderPage(){
+ if(!state){renderHome();return}
+ if(current==="squad")return renderSquad();
+ if(current==="market")return renderMarket();
+ if(current==="calendar")return renderCalendar();
+ if(current==="table")return renderTable();
+ if(current==="europe")return renderEurope();
+ if(current==="offers")return renderOffers();
+ if(current==="news")return renderNews();
+ if(current==="jobs")return renderJobs();
+ if(current==="season")return renderSeason();
+ renderDashboard();
+}
+
+function renderHome(){
+ document.getElementById("nav").classList.add("hidden");
+ document.getElementById("app").innerHTML=`<div class="screen hero"><div>
+ <h1>${t("hero.t1")}<br><span style="color:#c8ff35">${t("hero.t2")}</span></h1>
+ <p>${t("hero.sub")}</p>
+ <button class="big" onclick="newCareer()">${t("hero.start")}</button><br>
+ <button class="save big" onclick="renderSaves()">${t("hero.saves")}</button>
+ </div></div>`;
+}
+
+function newCareer(){
+ document.getElementById("nav").classList.add("hidden");
+ document.getElementById("app").innerHTML=`<div class="screen"><div class="panel"><h1>${t("newCareer.title")}</h1><div class="form">
+ <input id="manager" maxlength="30" placeholder="${t("newCareer.managerPh")}">
+ <select id="league">${Object.keys(LEAGUES).map(l=>`<option>${l}</option>`).join("")}</select>
+ <div id="teams"></div><button onclick="createCareer()">${t("newCareer.create")}</button>
+ </div></div></div>`;
+ updateTeams();document.getElementById("league").onchange=updateTeams;
+}
+function updateTeams(){const l=document.getElementById("league").value;document.getElementById("teams").innerHTML=`<select id="team">${LEAGUES[l].map(tm=>`<option>${esc(tm)}</option>`).join("")}</select>`}
+
+function createCareer(){
+ const manager=document.getElementById("manager").value.trim(),league=document.getElementById("league").value,team=document.getElementById("team").value;
+ if(!manager){toast(t("toast.needName"));return}
+ const tier=clubTier(team);
+ state={id:Date.now(),manager,league,team,season:"2026/27",seasonNo:1,budget:tier==="big"?140:70,wageBudget:tier==="big"?230:100,confidence:60,roundIndex:0,played:0,points:0,wins:0,draws:0,losses:0,squad:squad(team),schedule:[],table:[],matchLog:[],offers:[],sales:[],negotiations:[],history:[],startingXI:[],bench:[],newsFeed:[],jobOffers:[],formation:"4-3-3",lastMatchReport:null,europe:null};
+ makeFixtures();initializeLineup();initEurope();
+ addNews("🏟️",t("toast.created"),state.team+" — "+state.manager);
+ saveCareer(true);current="dashboard";renderNav();renderPage();toast(t("toast.created"));
+}
+
+function makeFixtures(){
+ state.schedule=generateSchedule(LEAGUES[state.league]);
+ state.roundIndex=0;
+ state.matchLog=[];
+ state.table=LEAGUES[state.league].map(tm=>({team:tm,p:0,pts:0,w:0,d:0,l:0,gf:0,ga:0}));
+}
+function userFixtures(){
+ const out=[];
+ state.schedule.forEach((round,ri)=>{
+  round.forEach(f=>{if(f.home===state.team||f.away===state.team)out.push({...f,matchday:ri+1,roundIdx:ri});});
+ });
+ return out;
+}
+
+function initializeLineup(){
+ const formation=state.formation||"4-3-3",cfg=FORMATIONS[formation]||FORMATIONS["4-3-3"];
+ const healthy=state.squad.filter(p=>!p.injured);
+ const used=new Set(),starters=[];
+ cfg.need.forEach(pos=>{
+  let p=healthy.find(pl=>!used.has(pl.name)&&pl.pos===pos);
+  if(!p)p=healthy.find(pl=>!used.has(pl.name));
+  if(p){used.add(p.name);starters.push(p);}
+ });
+ while(starters.length<11){
+  const p=state.squad.find(pl=>!used.has(pl.name));if(!p)break;
+  used.add(p.name);starters.push(p);
+ }
+ state.startingXI=starters.map(p=>p.name);
+ state.bench=state.squad.filter(p=>!state.startingXI.includes(p.name)).map(p=>p.name);
+}
+
+/* ===================== DASHBOARD ===================== */
+function confidenceLabel(c){
+ if(c>=80)return t("dash.confExcellent");
+ if(c>=55)return t("dash.confGood");
+ if(c>=30)return t("dash.confPressure");
+ return t("dash.confCrisis");
+}
+function confidenceClass(c){return c>=55?"good":c>=30?"warn":"bad";}
+function renderDashboard(){
+ const avg=state.squad.reduce((a,p)=>a+p.rating,0)/state.squad.length;
+ const uf=userFixtures();
+ const next=uf.find(f=>f.roundIdx>=state.roundIndex);
+ const wb=wageBill();
+ const conf=state.confidence||60;
+ const done=state.roundIndex>=state.schedule.length;
+ const report=state.lastMatchReport;
+ document.getElementById("app").innerHTML=`<div class="screen">
+ <div class="row"><div><span class="pill">${esc(state.league)}</span>${state.europe?`<span class="euro-badge">${europeStageLabel(state.europe.comp)}</span>`:""}<h1>${esc(state.team)}</h1><p class="muted">${t("dash.coach")}: ${esc(state.manager)} · ${t("dash.season")} ${state.season}</p></div>
+ <div>${!done?`<button onclick="simulate()">${t("dash.simulate")}</button>`:`<button onclick="endSeason()">${t("dash.endSeason")}</button>`}</div></div>
+ ${done&&!state.seasonEnded?`<div class="season-banner"><b>${t("dash.done")}</b></div>`:""}
+ ${state.seasonEnded?`<div class="season-banner"><b>${t("dash.ended")}</b> ${t("dash.endedSub")}</div>`:""}
+ <div class="grid">
+ <div class="card"><div class="muted">${t("dash.budget")}</div><div class="stat">€${money(state.budget)}M</div></div>
+ <div class="card"><div class="muted">${t("dash.wage")}</div><div class="stat">€${money(wb)}M / €${money(state.wageBudget)}M</div><div class="bar"><i style="width:${Math.min(100,(wb/state.wageBudget)*100)}%"></i></div></div>
+ <div class="card"><div class="muted">${t("dash.played")}</div><div class="stat">${state.played}</div></div>
+ <div class="card"><div class="muted">${t("dash.points")}</div><div class="stat">${state.points}</div></div>
+ <div class="card"><div class="muted">${t("dash.avg")}</div><div class="stat">${avg.toFixed(1)}</div></div>
+ <div class="card"><div class="muted">${t("dash.confidence")}</div><div class="stat">${confidenceLabel(conf)}</div><div class="bar conf"><i class="${confidenceClass(conf)}" style="width:${conf}%"></i></div></div>
+ </div>
+ ${report?`<div class="panel"><h2>${t("match.title")}</h2><div class="matchcard"><div class="row"><b>${esc(report.home)}</b><b>${esc(report.away)}</b></div><div class="scoreline">${report.hg} - ${report.ag}</div>${report.scorers&&report.scorers.length?`<p class="muted">${t("match.scorers")}: ${report.scorers.map(esc).join(", ")}</p>`:`<p class="muted">${t("match.noGoals")}</p>`}</div></div>`:""}
+ <div class="panel"><div class="row"><h2>${t("dash.news")}</h2><button class="save" onclick="go('news')">${t("dash.viewAll")}</button></div>${(state.newsFeed||[]).slice(0,3).map(n=>`<div class="offer"><b>${esc(n.icon)} ${esc(n.headline)}</b><div class="muted">${esc(n.text)}</div></div>`).join("")||`<p class="muted">${t("news.empty")}</p>`}</div>
+ <div class="panel"><h2>${t("dash.next")}</h2>${next?`<div class="fixture"><div>${next.home===state.team?"⭐ "+state.team:next.home}</div><strong>${t("dash.matchday")} ${next.matchday}</strong><div class="right">${next.away===state.team?"⭐ "+state.team:next.away}</div></div>`:`<p class='muted'>${t("dash.done")}</p>`}</div>
+ </div>`;
+}
+
+/* ===================== SQUAD ===================== */
+function renderSquad(){
+ const players=state.squad;
+ if(!Array.isArray(state.startingXI)||state.startingXI.length!==11)initializeLineup();
+ const coords=FORMATION_COORDS[state.formation]||FORMATION_COORDS["4-3-3"];
+ const starters=state.startingXI.map(n=>players.find(p=>p.name===n)).filter(Boolean);
+ const node=(p,c)=>{
+  if(!p)return "";
+  const hurt=p.injured>0;
+  return `<div class="pitch-player${hurt?" hurt":""}" style="left:${c.x}%;top:${c.y}%" draggable="true" ondragstart="dragStart(event,'${esc(p.name)}')" ondragend="dragEnd(event)" ondragover="event.preventDefault()" ondrop="dropOnPlayer(event,'${esc(p.name)}')">
+  <div class="shirt">👕<span class="shirtnum">${p.num}</span></div><b>${esc(p.name)}</b><span>${p.pos} · <strong>${p.rating}</strong> ${flagOf(p.nat)}</span></div>`;
+ };
+ const bench=players.filter(p=>!state.startingXI.includes(p.name));
+ document.getElementById("app").innerHTML=`<div class="screen">
+ <div class="row"><div><h1>${t("squad.title")}</h1><p class="muted">${esc(state.team)} · ${t("squad.formation")} <b>${state.formation}</b></p></div>
+ <div class="formation-controls"><select onchange="changeFormation(this.value)">${Object.keys(FORMATIONS).map(f=>`<option ${f===state.formation?"selected":""}>${f}</option>`).join("")}</select><span class="pill">${players.length} ${t("squad.players")}</span></div></div>
+ <div class="panel"><div class="pitch-wrap"><div class="pitch" id="pitch" ondragover="event.preventDefault()" ondrop="dropOnPitch(event)">
+ <div class="halfway"></div><div class="box topbox"></div><div class="box bottombox"></div><div class="goal topgoal"></div><div class="goal bottomgoal"></div>
+ ${starters.map((p,i)=>node(p,coords[i]||{x:50,y:50})).join("")}</div></div>
+ <div class="squad-help">${t("squad.help")}</div>
+ <h2>${t("squad.bench")}</h2><div class="bench" ondragover="event.preventDefault()" ondrop="dropOnBench(event)">
+ ${bench.map((p,i)=>`<div class="bench-player" draggable="true" ondragstart="dragStart(event,'${esc(p.name)}')" ondragend="dragEnd(event)"><div class="bench-num">${p.num}</div><div><b>${esc(p.name)} ${flagOf(p.nat)}</b><div class="muted">${p.pos} · ${p.age}a · <span class="rating">${p.rating}</span> · €${money(p.value)}M ${p.injured>0?`<span class="hurt-badge">🚑 ${t("squad.outFor",{n:p.injured})}</span>`:""}</div></div></div>`).join("")}</div></div>
+ <div class="panel"><h2>${t("squad.all")}</h2><table class="players"><tr><th>#</th><th>${t("squad.player")}</th><th>${t("squad.age")}</th><th>${t("squad.pos")}</th><th>${t("squad.rating")}</th><th>${t("squad.value")}</th><th>${t("squad.wage")}</th><th>${t("squad.status")}</th><th></th></tr>
+ ${players.map(p=>`<tr><td>${p.num}</td><td>${flagOf(p.nat)} ${esc(p.name)}</td><td>${p.age}</td><td>${p.pos}</td><td class="rating">${p.rating}</td><td>€${money(p.value)}M</td><td>€${money(p.salary)}M</td><td>${p.injured>0?`<span class="pill hurt-badge">🚑 ${t("squad.injured")}</span>`:state.startingXI.includes(p.name)?`<span class="pill">${t("squad.starter")}</span>`:`<span class="pill">${t("squad.sub")}</span>`}</td><td><button class="danger" onclick="putForSale('${esc(p.name)}')">${t("squad.sell")}</button></td></tr>`).join("")}</table></div></div>`;
+ saveCareer(true);
+}
+function changeFormation(f){
+ if(!FORMATIONS[f])return;
+ state.formation=f;initializeLineup();saveCareer(true);renderSquad();toast(t("toast.formationChanged",{f}));
+}
+function dragStart(e,name){draggedPlayer=name;e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",name);e.target.classList.add("dragging")}
+function dragEnd(e){e.target.classList.remove("dragging")}
+function dropOnPlayer(e,target){
+ e.preventDefault();e.stopPropagation();
+ const source=draggedPlayer||e.dataTransfer.getData("text/plain");if(!source||source===target)return;
+ const sp=state.squad.find(p=>p.name===source);
+ if(sp&&sp.injured>0){toast(t("toast.blockedInjured"));return}
+ const a=state.startingXI.indexOf(source),b=state.startingXI.indexOf(target);
+ if(a>=0&&b>=0){[state.startingXI[a],state.startingXI[b]]=[state.startingXI[b],state.startingXI[a]];saveCareer(true);renderSquad();toast(t("squad.swapHint"));return}
+ if(a<0&&b>=0){state.startingXI[b]=source;state.bench=state.bench.filter(n=>n!==source);if(!state.bench.includes(target))state.bench.push(target);saveCareer(true);renderSquad();toast(source+" "+t("squad.isStarter"))}
+}
+function dropOnPitch(e){e.preventDefault();const source=draggedPlayer||e.dataTransfer.getData("text/plain");if(!source||state.startingXI.includes(source))return;toast(t("toast.dropOnStarter"))}
+function dropOnBench(e){
+ e.preventDefault();
+ const source=draggedPlayer||e.dataTransfer.getData("text/plain");if(!source)return;
+ const i=state.startingXI.indexOf(source);if(i<0)return;
+ const replacement=state.bench.find(n=>{const p=state.squad.find(x=>x.name===n);return n!==source&&p&&!p.injured;});
+ if(replacement){state.startingXI[i]=replacement;state.bench=state.bench.filter(n=>n!==replacement);if(!state.bench.includes(source))state.bench.push(source);}
+ saveCareer(true);renderSquad();toast(source+" "+t("squad.toBench"));
+}
+
+/* ===================== MARKET ===================== */
+function renderMarket(){
+ const all=Array.isArray(state.squad)?state.squad:[];
+ const active=(state.negotiations||[]).filter(n=>n.active);
+ const incoming=(state.offers||[]).filter(o=>o.status==="pendiente");
+ const listed=(state.sales||[]).map(x=>x.name);
+ const pool=marketPool();
+ const q=(document.getElementById("marketSearch")||{}).value||"";
+ const pos=(document.getElementById("marketPos")||{}).value||"ALL";
+ const max=(document.getElementById("marketMax")||{}).value||"";
+ const filtered=pool.filter(x=>(!q||x.name.toLowerCase().includes(q.toLowerCase()))&&(pos==="ALL"||x.pos===pos)&&(!max||x.value<=Number(max)));
+ const wb=wageBill();
+ const activeChats=active.map(n=>`<div class="card"><span class="pill">🤝 ${t("market.round")} ${n.round}/3</span><h3>${flagOf(n.nat)} ${esc(n.name)}</h3><p>${t("neg.summary",{round:n.round,fee:money(n.offerFee),salary:money(n.salary)})}</p>${renderNegotiationInline(n)}</div>`).join("");
+ const incomingHtml=incoming.map(o=>`<div class="card"><span class="pill">📨</span><h3>${esc(o.player)}</h3><p><b>${esc(o.club)}</b> ${t("offersPage.wants")} — €${money(o.amount)}M</p><div class="offer-actions"><button onclick="acceptOffer(${o.id})">${t("offersPage.accept")}</button><button class="danger" onclick="rejectOffer(${o.id})">${t("offersPage.reject")}</button></div></div>`).join("");
+ document.getElementById("app").innerHTML=`<div class="screen">
+ <div class="row"><div><h1>${t("market.title")}</h1><p class="muted">${t("market.budget")}: <b>€${money(state.budget)}M</b> · ${t("market.wageUsed")}: <b>€${money(wb)}M / €${money(state.wageBudget)}M</b></p></div><span class="pill">${t("market.note")}</span></div>
+
+ <div class="panel"><h2>${t("market.searchTitle")}</h2>
+ <div class="form" style="max-width:none;grid-template-columns:2fr 1fr 1fr">
+ <input id="marketSearch" placeholder="${t("market.searchPh")}" oninput="renderMarket()">
+ <select id="marketPos" onchange="renderMarket()"><option value="ALL">${t("market.allPos")}</option><option>GK</option><option>CB</option><option>LB</option><option>RB</option><option>CDM</option><option>CM</option><option>CAM</option><option>LW</option><option>RW</option><option>ST</option></select>
+ <input id="marketMax" type="number" min="1" placeholder="${t("market.maxPh")}" oninput="renderMarket()">
+ </div></div>
+
+ <div class="panel"><div class="row"><h2>${t("market.activeNeg")}</h2><span class="pill">${active.length}</span></div>
+ ${active.length?`<div class="grid">${activeChats}</div>`:`<p class="muted">${t("market.noActiveNeg")}</p>`}</div>
+
+ <div class="panel"><div class="row"><h2>${t("market.incoming")}</h2><span class="pill">${incoming.length}</span></div>
+ ${incoming.length?`<div class="grid">${incomingHtml}</div>`:`<p class="muted">${t("market.noIncoming")}</p>`}</div>
+
+ <div class="panel"><h2>${t("market.mySales")}</h2>
+ ${listed.length?`<div class="grid">${listed.map(n=>{const p=all.find(x=>x.name===n);return `<div class="card"><h3>${esc(n)}</h3><p>${p?p.pos:""} · ${t("squad.rating")} <b class="rating">${p?p.rating:"-"}</b> · ${t("market.askingPrice")} €${p?money(p.value):"-"}M</p><span class="pill">${t("market.listening")}</span></div>`}).join("")}</div>`:`<p class="muted">${t("market.noSales")}</p>`}
+ </div>
+
+ <div class="panel"><h2>${t("market.available")}</h2>
+ <div class="grid">${filtered.map(x=>`<div class="card"><span class="pill">${x.pos}</span> <span class="pill tierbadge ${x.interest>=3?"tierbig":"tiermid"}">🔥 ${x.interest} ${t("market.interest")}</span><h3>${flagOf(x.nat)} ${esc(x.name)}</h3><p>${t("squad.age")}: ${x.age} · ${t("squad.rating")} <b class="rating">${x.rating}</b></p><p>${t("market.askingPrice")}: €${x.value}M · ${t("market.yearly",{v:x.wage})}</p><button onclick="startNegotiation('${esc(x.name).replace(/'/g,"\\'")}','${x.pos}',${x.rating},${x.age},${x.value},${x.wage},'${x.nat}')">${t("market.negotiate")}</button></div>`).join("")||`<p class="muted">${t("market.noMatches")}</p>`}</div>
+ </div></div>`;
+}
+function renderNegotiationInline(n){
+ return `<div style="background:#07110d;border:1px solid #24372b;border-radius:12px;padding:12px;margin:10px 0;font-size:14px">
+ <p class="muted" style="margin:0">${t("neg.info",{round:n.round})}</p>
+ </div>
+ <div class="form" style="margin:0">
+ <input id="fee_${n.id}" type="number" min="0.1" step=".1" value="${n.offerFee}" placeholder="${t("neg.feePh")}">
+ <input id="sal_${n.id}" type="number" min="0.1" step=".1" value="${n.salary}" placeholder="${t("neg.salaryPh")}">
+ <div class="offer-actions"><button onclick="submitNegotiation(${n.id})">${t("neg.send")}</button><button class="danger" onclick="cancelNegotiation(${n.id})">${t("neg.cancel")}</button></div>
+ </div>`;
+}
+function startNegotiation(name,pos,rating,age,value,wage,nat){
+ if(state.negotiations.some(n=>n.active&&n.name===name))return;
+ const id=Date.now()+Math.random();
+ state.negotiations.push({id,name,pos,rating,age,value,wage,nat,round:1,offerFee:Number((value*0.82).toFixed(1)),salary:Number((wage*0.85).toFixed(2)),active:true});
+ saveCareer(true);renderMarket();
+}
+function cancelNegotiation(id){state.negotiations=state.negotiations.filter(n=>n.id!==id);saveCareer(true);renderMarket()}
+function submitNegotiation(id){
+ const n=state.negotiations.find(x=>x.id===id&&x.active);if(!n)return;
+ const fee=Number(document.getElementById("fee_"+id).value),salary=Number(document.getElementById("sal_"+id).value);
+ if(!fee||!salary||fee<=0||salary<=0)return;
+ n.offerFee=fee;n.salary=salary;
+ const fairFee=n.value*(1+(n.round-1)*0.10),fairSalary=n.wage*(1+(n.round-1)*0.08);
+ const dealReady=fee>=fairFee*0.97&&salary>=fairSalary*0.97;
+ if(dealReady){
+  if(state.budget<fee){toast(t("toast.noBudget"));return}
+  if(wageBill()+salary>state.wageBudget){toast(t("toast.noWage"));return}
+  state.budget=Number((state.budget-fee).toFixed(1));
+  const p={name:n.name,pos:n.pos,rating:n.rating,age:n.age,value:fee,salary,nat:n.nat,injured:0};
+  state.squad.push(p);assignNumbers(state.squad);
+  addNews("💣",t("toast.dealDone"),n.name+" → "+state.team+" · €"+fee+"M");
+  state.negotiations=state.negotiations.filter(x=>x.id!==id);
+  saveCareer(true);renderMarket();toast(t("toast.dealDone"));return;
+ }
+ const hijackChance=0.08+n.round*0.07+(n.rating>=87?0.06:0);
+ if(Math.random()<hijackChance){
+  const rivals=Object.values(LEAGUES).flat().filter(c=>c!==state.team);
+  const club=rivals[Math.floor(Math.random()*rivals.length)];
+  addNews("🚨",t("toast.hijacked",{club,name:n.name}),"");
+  state.negotiations=state.negotiations.filter(x=>x.id!==id);
+  saveCareer(true);renderMarket();toast(t("toast.hijacked",{club,name:n.name}));return;
+ }
+ if(n.round<3){
+  n.round++;n.offerFee=Number(fairFee.toFixed(1));n.salary=Number(Math.max(fairSalary,salary*1.05).toFixed(2));
+  addNews("🗣️",t("toast.roundUp"),n.name);
+  saveCareer(true);renderMarket();toast(t("toast.roundUp"));
+ }else{
+  n.active=false;state.negotiations=state.negotiations.filter(x=>x.id!==id);
+  addNews("❌",t("toast.broken"),n.name);
+  saveCareer(true);renderMarket();toast(t("toast.broken"));
+ }
+}
+function putForSale(name){
+ const p=state.squad.find(x=>x.name===name);if(!p)return;
+ if(state.sales.some(x=>x.name===name)){toast(t("toast.alreadyListed"));return}
+ state.sales.push({name,asking:Math.max(0.3,Number(p.value.toFixed(1))),listedAt:Date.now()});
+ addNews("📤",t("toast.listed",{name}),"");
+ generateOfferFor(p);
+ saveCareer(true);toast(t("toast.listed",{name}));
+}
+function generateOfferFor(p){
+ const clubs=allTeams().filter(tm=>tm!==state.team);
+ const bigOnes=clubs.filter(c=>clubTier(c)==="big"),midOnes=clubs.filter(c=>clubTier(c)==="mid");
+ const wantsBig=p.rating>=83&&Math.random()<0.55&&bigOnes.length;
+ const club=wantsBig?bigOnes[Math.floor(Math.random()*bigOnes.length)]:midOnes[Math.floor(Math.random()*midOnes.length)]||clubs[Math.floor(Math.random()*clubs.length)];
+ const mult=clubTier(club)==="big"?(0.92+Math.random()*0.38):(0.55+Math.random()*0.4);
+ const amount=Number((p.value*mult).toFixed(1));
+ state.offers.push({id:Date.now()+Math.random(),player:p.name,club,amount,status:"pendiente"});
+ addNews("📨",club+" — "+p.name,"€"+money(amount)+"M");
+}
+function allTeams(){return Object.values(LEAGUES).flat()}
+
+/* ===================== OFFERS ===================== */
+function renderOffers(){
+ document.getElementById("app").innerHTML=`<div class="screen"><h1>${t("offersPage.title")}</h1>
+ <div class="panel"><h2>${t("offersPage.forSale")}</h2>${state.sales.length?state.sales.map(s=>`<div class="offer"><div class="row"><b>${esc(s.name)}</b><span>${t("offersPage.asking")}: €${money(s.asking)}M</span></div><button class="danger" onclick="removeSale('${esc(s.name)}')">${t("offersPage.remove")}</button></div>`).join(""):`<p class='muted'>${t("offersPage.noSales")}</p>`}</div>
+ <div class="panel"><h2>${t("offersPage.incomingT")}</h2>${state.offers.filter(o=>o.status==="pendiente").length?state.offers.filter(o=>o.status==="pendiente").map(o=>`<div class="offer"><div class="row"><div><b>${esc(o.club)}</b> ${t("offersPage.wants")} <b>${esc(o.player)}</b></div><strong>€${money(o.amount)}M</strong></div><div class="offer-actions"><button onclick="acceptOffer(${o.id})">${t("offersPage.accept")}</button><button class="danger" onclick="rejectOffer(${o.id})">${t("offersPage.reject")}</button></div></div>`).join(""):`<p class='muted'>${t("offersPage.noIncoming")}</p>`}</div></div>`;
+}
+function removeSale(name){state.sales=state.sales.filter(s=>s.name!==name);saveCareer(true);renderOffers()}
+function acceptOffer(id){
+ const o=state.offers.find(x=>x.id==id);if(!o)return;const i=state.squad.findIndex(p=>p.name===o.player);if(i<0){o.status="rejected";renderOffers();return}
+ if(state.startingXI.includes(o.player)){toast(t("toast.cantSellStarter"));return}
+ state.squad.splice(i,1);state.budget=Number((state.budget+o.amount).toFixed(1));o.status="accepted";state.sales=state.sales.filter(s=>s.name!==o.player);
+ addNews("💰",o.club+" — "+o.player,"€"+money(o.amount)+"M");saveCareer(true);renderOffers();toast(t("toast.saleAccepted"));
+}
+function rejectOffer(id){const o=state.offers.find(x=>x.id==id);if(o)o.status="rejected";saveCareer(true);renderOffers();toast(t("toast.offerRejected"))}
+
+/* ===================== CALENDAR / TABLE / EUROPE ===================== */
+function renderCalendar(){
+ const uf=userFixtures();
+ document.getElementById("app").innerHTML=`<div class="screen"><div class="panel"><h1>${t("calendar.title")}</h1><p class="muted">${t("calendar.season")} ${state.season}</p>${uf.map(f=>{
+  const played=f.roundIdx<state.roundIndex;
+  const log=played?state.matchLog.find(m=>m.round===f.roundIdx):null;
+  const label=played&&log?`${log.hg}-${log.ag}`:`${t("calendar.matchday")} ${f.matchday}`;
+  return `<div class="fixture"><div>${f.home===state.team?"⭐ "+esc(state.team):esc(f.home)}</div><strong>${label}</strong><div class="right">${f.away===state.team?"⭐ "+esc(state.team):esc(f.away)}</div></div>`;
+ }).join("")}</div></div>`;
+}
+function renderTable(){
+ const sorted=[...state.table].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);
+ document.getElementById("app").innerHTML=`<div class="screen"><div class="panel"><h1>${t("table.title")}</h1><table class="players"><tr><th>${t("table.pos")}</th><th>${t("table.club")}</th><th>${t("table.p")}</th><th>${t("table.pts")}</th><th>${t("table.w")}</th><th>${t("table.d")}</th><th>${t("table.l")}</th><th>${t("table.gd")}</th></tr>${sorted.map((x,i)=>`<tr class="${x.team===state.team?"me":""}"><td>${i+1}</td><td>${esc(x.team)}</td><td>${x.p}</td><td><b>${x.pts}</b></td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf-x.ga>=0?"+":""}${x.gf-x.ga}</td></tr>`).join("")}</table></div></div>`;
+}
+function renderEurope(){
+ const e=state.europe;
+ if(!e){document.getElementById("app").innerHTML=`<div class="screen"><div class="panel"><h1>🌍 Europa</h1><p class="muted">${t("europe.notQualified")}</p><p class="muted">La clasificación europea 2026/27 se determina según los clubes realmente participantes.</p></div></div>`;return;}
+ const standings=Object.entries(e.table).map(([tm,s])=>({team:tm,...s})).sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);
+ const status=e.phase==="champion"?"🏆 Campeón":e.phase==="out"?"❌ Eliminado":e.phase==="league"?"Fase liga":e.phase==="playoff"?"Playoff":e.phase==="r16"?"Octavos":e.phase==="qf"?"Cuartos":e.phase==="sf"?"Semifinal":"Final";
+ const rows=standings.map((x,i)=>`<tr class="${x.team===state.team?"me":""}"><td>${i+1}</td><td>${esc(x.team)}</td><td>${x.p}</td><td>${x.w}</td><td>${x.d}</td><td>${x.l}</td><td>${x.gf-x.ga>=0?"+":""}${x.gf-x.ga}</td><td><b>${x.pts}</b></td></tr>`).join("");
+ const hist=e.history.map(h=>{
+   if(h.stage==="league") return `<div class="matchcard"><span class="pill">${europeStageLabel(e.comp)} · Jornada ${h.matchday} · ${esc(h.date||"")}</span><div class="row"><b>${esc(h.home)}</b><b>${esc(h.away)}</b></div><div class="scoreline">${h.hg} - ${h.ag}</div>${h.scorers?.length?`<p class="muted">⚽ ${h.scorers.map(esc).join(", ")}</p>`:""}</div>`;
+   const label=h.stage==="playoff"?"Playoff":h.stage==="r16"?"Octavos":h.stage==="qf"?"Cuartos":h.stage==="sf"?"Semifinal":"Final";
+   return `<div class="matchcard"><span class="pill">${label} · ${esc(h.opp)}</span><p class="muted">Ida: ${h.leg1.hg}-${h.leg1.ag}${h.leg2?` · Vuelta: ${h.leg2.ag}-${h.leg2.hg}`:""}</p><div class="scoreline">Global: ${h.userAgg} - ${h.oppAgg}</div><p class="${h.advanced?'success':'danger'}">${h.advanced?'✅ Avanzas':'❌ Eliminado'}</p></div>`;
+ }).join("");
+ document.getElementById("app").innerHTML=`<div class="screen">
+ <div class="row"><div><h1>🌍 ${europeStageLabel(e.comp)}</h1><p class="muted">Temporada ${esc(state.season)} · Formato UEFA 2026/27 · ${e.total} partidos de fase liga</p></div><span class="pill">${status}</span></div>
+ <div class="panel"><h2>Tabla de la fase liga</h2><table class="players"><tr><th>#</th><th>Club</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>DG</th><th>PTS</th></tr>${rows}</table>
+ <p class="muted" style="margin-top:12px">1.º–8.º: octavos · 9.º–24.º: playoff · 25.º–36.º: eliminados.</p></div>
+ <div class="panel"><h2>Trayectoria europea</h2>${hist||`<p class="muted">Todavía no hay partidos europeos.</p>`}</div>
+ </div>`;
+}
+/* ===================== SIMULATE ===================== */
+function simulate(){
+ if(state.roundIndex>=state.schedule.length)return;
+ state.squad.forEach(p=>{if(p.injured>0)p.injured--;});
+ const round=state.schedule[state.roundIndex];
+ let userFixture=null;
+ round.forEach(f=>{
+  const userInvolved=f.home===state.team||f.away===state.team;
+  const r=playFixture(f.home,f.away,userInvolved);
+  updateTable(f.home,f.away,r.hg,r.ag);
+  if(userInvolved){userFixture={...f,...r};}
+ });
+ if(userFixture){
+  state.matchLog.push({round:state.roundIndex,home:userFixture.home,away:userFixture.away,hg:userFixture.hg,ag:userFixture.ag});
+  state.lastMatchReport={home:userFixture.home,away:userFixture.away,hg:userFixture.hg,ag:userFixture.ag,scorers:userFixture.scorers};
+  const userIsHome=userFixture.home===state.team;
+  const uGoals=userIsHome?userFixture.hg:userFixture.ag,oGoals=userIsHome?userFixture.ag:userFixture.hg;
+  addNews(uGoals>oGoals?"🟢":uGoals===oGoals?"🟡":"🔴",userFixture.home+" "+userFixture.hg+"-"+userFixture.ag+" "+userFixture.away,"");
+  state.confidence=Math.max(0,Math.min(100,(state.confidence||60)+(uGoals>oGoals?4:uGoals===oGoals?0:-5)));
+  const inj=rollInjury();
+  if(inj){
+   addNews("🚑",t("toast.injury",{name:inj.name,n:inj.dur}),inj.autoSubName?t("toast.autoSub",{name2:inj.autoSubName,name:inj.name}):"");
+  }
+  if(Math.random()<0.22)generateRandomOffer();
+ }
+ const userRow=state.table.find(x=>x.team===state.team);
+ if(userRow){state.points=userRow.pts;state.wins=userRow.w;state.draws=userRow.d;state.losses=userRow.l;state.played=userRow.p;}
+ state.roundIndex++;
+ if(state.europe){
+  if(state.europe.phase==="league" && state.europe.played<state.europe.total && Math.random()<0.55) europeLeagueMatchday();
+  else if(["playoff","r16","qf","sf","final"].includes(state.europe.phase) && Math.random()<0.55) playEuropeKnockout();
+ }
+ saveCareer(true);renderPage();toast(t("toast.simulated"));
+}
+function generateRandomOffer(){
+ const eligible=state.squad.filter(p=>!state.startingXI.includes(p.name)&&!state.sales.some(s=>s.name===p.name));if(!eligible.length)return;
+ const p=eligible[Math.floor(Math.random()*eligible.length)];generateOfferFor(p);
+}
+
+/* ===================== SEASON ===================== */
+function endSeason(){
+ if(state.seasonEnded){go("season");return}
+ if(state.roundIndex<state.schedule.length){toast(t("toast.needCalendar"));return}
+ const sorted=[...state.table].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);
+ const pos=Math.max(1,sorted.findIndex(x=>x.team===state.team)+1);
+ const prize=Math.max(5,60-(pos-1)*2);
+ const avg=state.squad.reduce((a,p)=>a+p.rating,0)/state.squad.length;
+ state.budget=Number((state.budget+prize).toFixed(1));
+ state.wageBudget=Number((state.wageBudget*(1+(60-pos)/400)).toFixed(1));
+ state.seasonEnded=true;state.lastPosition=pos;state.lastPrize=prize;
+ state.history.push({season:state.season,position:pos,points:state.points,prize,avg:Number(avg.toFixed(1)),euro:state.europe?state.europe.phase:null});
+ addNews("🏁",t("season.title"),"#"+pos+" · €"+prize+"M");
+ generateJobOffers();saveCareer(true);go("season");
+}
+function renderSeason(){
+ if(!state.seasonEnded){
+  document.getElementById("app").innerHTML=`<div class="screen"><div class="panel"><h1>${t("season.title")}</h1><p class="muted">${t("season.completeAll")}</p><p>${t("season.remaining")}: ${state.schedule.length-state.roundIndex}</p></div></div>`;return;
+ }
+ const h=state.history[state.history.length-1];
+ document.getElementById("app").innerHTML=`<div class="screen"><div class="season-banner"><h1>🏆 ${esc(state.season)} ${t("season.finished")}</h1><p>#${state.lastPosition} · ${state.points} pts</p><p>💶 €${state.lastPrize}M</p></div>
+ <div class="grid"><div class="card"><div class="muted">${t("season.wins")}</div><div class="stat">${state.wins}</div></div><div class="card"><div class="muted">${t("season.draws")}</div><div class="stat">${state.draws}</div></div><div class="card"><div class="muted">${t("season.losses")}</div><div class="stat">${state.losses}</div></div><div class="card"><div class="muted">${t("season.avg")}</div><div class="stat">${h.avg}</div></div></div>
+ <div class="panel"><h2>${t("season.evolution")}</h2>${state.history.map(x=>`<div class="offer"><div class="row"><b>${esc(x.season)}</b><span>#${x.position} · ${x.points}pts · ${t("squad.rating")} ${x.avg} · €${x.prize}M</span></div></div>`).join("")}</div>
+ <button onclick="newSeason()">${t("season.startNext",{season:nextSeasonName()})}</button></div>`;
+}
+function nextSeasonName(){const y=Number(state.season.slice(0,4))+1;return `${y}/${String(y+1).slice(2)}`}
+function newSeason(){
+ state.season=nextSeasonName();state.seasonNo++;state.points=0;state.wins=0;state.draws=0;state.losses=0;state.seasonEnded=false;
+ state.offers=[];state.sales=[];state.negotiations=[];state.jobOffers=[];state.lastMatchReport=null;
+ state.squad.forEach(p=>{const delta=Math.random()<0.55?1:-1;p.rating=Math.max(60,Math.min(95,p.rating+delta));p.age=(p.age||25)+1;p.value=computeValue(p.rating,p.age);p.salary=computeWage(p.rating,p.age);p.injured=0;});
+ makeFixtures();initEurope();
+ addNews("🔄",t("toast.newSeason"),"");saveCareer(true);current="dashboard";renderNav();renderPage();toast(t("toast.newSeason"));
+}
+
+function addNews(icon,headline,text){
+ if(!state)return;
+ if(!Array.isArray(state.newsFeed))state.newsFeed=[];
+ state.newsFeed.unshift({id:Date.now()+Math.random(),icon,headline,text,date:new Date().toLocaleDateString()});
+ state.newsFeed=state.newsFeed.slice(0,80);
+}
+function generateJobOffers(){
+ if(!Array.isArray(state.jobOffers))state.jobOffers=[];
+ state.jobOffers=[];
+ const clubs=LEAGUES[state.league].filter(tm=>tm!==state.team).sort(()=>Math.random()-.5).slice(0,Math.min(3,LEAGUES[state.league].length-1));
+ clubs.forEach((club,i)=>{
+  const tier=clubTier(club);
+  const budget=Math.round((tier==="big"?150:70)+Math.random()*90);
+  const target=i===0?"Europe":i===1?"Top 10":"Survival";
+  state.jobOffers.push({id:Date.now()+Math.random(),club,league:state.league,budget,target,status:"pendiente"});
+  addNews("💼",club,target);
+ });
+}
+function renderNews(){
+ const feed=state.newsFeed||[];
+ document.getElementById("app").innerHTML=`<div class="screen">
+ <div class="row"><div><h1>${t("news.title")}</h1><p class="muted">${t("news.sub")}</p></div><span class="pill">${feed.length} ${t("news.count")}</span></div>
+ ${feed.length?feed.map(n=>`<div class="panel"><div class="row"><span class="pill">${esc(n.icon)} ${esc(n.headline)}</span><span class="muted">${esc(n.date)}</span></div>${n.text?`<p style="font-size:16px;line-height:1.6">${esc(n.text)}</p>`:""}</div>`).join(""):`<div class="panel"><h2>${t("news.empty")}</h2><p class="muted">${t("news.emptySub")}</p></div>`}
+ </div>`;
+}
+function renderJobs(){
+ const jobs=state.jobOffers||[];
+ document.getElementById("app").innerHTML=`<div class="screen"><h1>${t("jobs.title")}</h1>
+ <div class="panel"><p class="muted">${t("jobs.sub")}</p></div>
+ ${jobs.length?`<div class="grid">${jobs.map(j=>`<div class="card"><span class="pill">${esc(j.league)}</span><h2>${esc(j.club)}</h2><p>💰 ${t("jobs.budget")}: €${j.budget}M</p><p>🎯 ${t("jobs.target")}: <b>${esc(j.target)}</b></p><div class="offer-actions"><button onclick="acceptJob(${j.id})">${t("jobs.accept")}</button><button class="danger" onclick="rejectJob(${j.id})">${t("jobs.reject")}</button></div></div>`).join("")}</div>`:`<div class="panel"><h2>${t("jobs.empty")}</h2><p class="muted">${t("jobs.emptySub")}</p></div>`}
+ </div>`;
+}
+function acceptJob(id){
+ const j=(state.jobOffers||[]).find(x=>x.id==id);if(!j)return;
+ const tier=clubTier(j.club);
+ state.team=j.club;state.league=j.league;state.budget=j.budget;state.wageBudget=tier==="big"?230:100;state.confidence=55;state.points=0;state.wins=0;state.draws=0;state.losses=0;state.seasonEnded=false;state.offers=[];state.sales=[];state.negotiations=[];state.jobOffers=[];state.lastMatchReport=null;
+ state.squad=squad(state.team);state.formation="4-3-3";initializeLineup();makeFixtures();initEurope();
+ addNews("💼",t("toast.jobAccepted"),state.team);
+ saveCareer(true);go("dashboard");toast(t("toast.jobAccepted"));
+}
+function rejectJob(id){
+ state.jobOffers=(state.jobOffers||[]).filter(x=>x.id!=id);
+ saveCareer(true);renderJobs();toast(t("toast.jobRejected"));
+}
+
+/* ===================== SAVE / LOAD ===================== */
+function saveCareer(silent=false){
+ if(!state){if(!silent)toast(t("toast.noActive"));return}
+ const saves=JSON.parse(localStorage.getItem("worldManagerSaves")||"[]"),clean=JSON.parse(JSON.stringify(state)),i=saves.findIndex(x=>x.id===state.id);
+ if(i>=0)saves[i]=clean;else saves.push(clean);localStorage.setItem("worldManagerSaves",JSON.stringify(saves));if(!silent)toast(t("toast.saved"));
+}
+function renderSaves(){
+ document.getElementById("nav").classList.add("hidden");const saves=JSON.parse(localStorage.getItem("worldManagerSaves")||"[]");
+ document.getElementById("app").innerHTML=`<div class="screen"><div class="row"><h1>${t("saves.title")}</h1><button class="save" onclick="goHome()">${t("saves.backHome")}</button></div>
+ ${saves.length?`<div class="grid">${saves.map(s=>`<div class="card"><h3>${esc(s.manager)}</h3><p class="muted">${esc(s.team)} · ${esc(s.league)}</p><p>${s.season} · ${s.points}pts · €${money(s.budget)}M</p><button onclick="loadCareer(${s.id})">${t("saves.cont")}</button> <button class="danger" onclick="confirmDeleteCareer(${s.id})">${t("saves.del")}</button></div>`).join("")}</div>`:`<div class="panel"><h2>${t("saves.empty")}</h2><p class="muted">${t("saves.emptySub")}</p><button onclick="newCareer()">${t("saves.create")}</button></div>`}</div>`;
+}
+function loadCareer(id){
+ const saves=JSON.parse(localStorage.getItem("worldManagerSaves")||"[]");state=saves.find(x=>x.id===id);
+ if(state){
+  if(!Array.isArray(state.newsFeed))state.newsFeed=[];
+  if(!Array.isArray(state.jobOffers))state.jobOffers=[];
+  if(!Array.isArray(state.negotiations))state.negotiations=[];
+  if(!Array.isArray(state.matchLog))state.matchLog=[];
+  if(!state.formation)state.formation="4-3-3";
+  if(!state.wageBudget)state.wageBudget=100;
+  if(state.confidence===undefined)state.confidence=60;
+  if(state.roundIndex===undefined)state.roundIndex=state.played||0;
+  if(!state.europe)initEurope();
+  state.squad.forEach(p=>{if(!p.age)p.age=randAge(20,32);if(p.salary===undefined)p.salary=computeWage(p.rating,p.age);if(p.injured===undefined)p.injured=0;if(!p.nat)p.nat=pickNat(p.name);if(!p.num)p.num=Math.floor(1+Math.random()*99);});
+ }
+ if(!state){toast(t("toast.notFound"));return}
+ current="dashboard";renderNav();renderPage();toast(t("toast.loaded"));
+}
+function confirmDeleteCareer(id){
+ showConfirm(t("saves.confirmDel"),ok=>{if(ok)deleteCareer(id);});
+}
+function deleteCareer(id){
+ localStorage.setItem("worldManagerSaves",JSON.stringify(JSON.parse(localStorage.getItem("worldManagerSaves")||"[]").filter(x=>x.id!==id)));
+ renderSaves();
+}
+function goHome(){state=null;current="home";renderHome()}
+
+renderLangSelect();
+renderHome();
+</script>
+</body>
+</html>
